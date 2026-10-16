@@ -36,8 +36,8 @@ func AVX() {
 		plen := Load(Param("len"), GP64())
 		prime := YMM()
 
-		// a[0] contains merged values
-		// a[1] is a temporary accumulator used for the accum_large loop.
+		// a[0] contains products and the initial accumulators.
+		// a[1] sums raw data until its adjacent 64-bit elements are swapped.
 		a := [2][2]VecVirtual{{YMM(), YMM()}, {YMM(), YMM()}}
 
 		advance := func(n int) {
@@ -60,7 +60,7 @@ func AVX() {
 			VMOVDQU(primeData, prime)
 
 			CMPQ(plen, U32(1024))
-			JLE(LabelRef("accum"))
+			JLE(LabelRef("accum_init"))
 
 			used := 0
 			for i := 0; i < 16; i++ {
@@ -84,7 +84,9 @@ func AVX() {
 			for i := 0; i < 16; i++ {
 				avx2accumLoaded(data, a, 64*i, loadedOffset[i*8], loadedOffset[i*8+32], true, i == 0)
 			}
-			// add a[1] to a[0]
+			// Permute raw sums once before the nonlinear scramble.
+			VPSHUFD(Imm(78), a[1][0], a[1][0])
+			VPSHUFD(Imm(78), a[1][1], a[1][1])
 			VPADDQ(a[0][0], a[1][0], a[0][0])
 			VPADDQ(a[0][1], a[1][1], a[0][1])
 			advance(16)
@@ -92,8 +94,15 @@ func AVX() {
 			avx2scramble(prime, key, a[0], 8*16)
 
 			CMPQ(plen, U32(1024))
-			JLE(LabelRef("accum"))
+			JLE(LabelRef("accum_init"))
 			JMP(LabelRef("accum_large"))
+		}
+
+		Label("accum_init")
+		{
+			// A partial block must not reuse the preceding block's raw sums.
+			VPXOR(a[1][0], a[1][0], a[1][0])
+			VPXOR(a[1][1], a[1][1], a[1][1])
 		}
 
 		Label("accum")
@@ -101,7 +110,7 @@ func AVX() {
 			CMPQ(plen, Imm(64))
 			JLE(LabelRef("finalize"))
 
-			avx2accum(data, a[0], 0, 0, skey, false)
+			avx2accum(data, a, 0, 0, skey, false)
 			advance(1)
 			ADDQ(U32(8), skey.Base)
 
@@ -116,11 +125,16 @@ func AVX() {
 			SUBQ(Imm(64), data.Base)
 			ADDQ(plen, data.Base)
 
-			avx2accum(data, a[0], 0, 121, key, false)
+			avx2accum(data, a, 0, 121, key, false)
 		}
 
 		Label("return")
 		{
+			// The final stripe is included in these raw sums before the store.
+			VPSHUFD(Imm(78), a[1][0], a[1][0])
+			VPSHUFD(Imm(78), a[1][1], a[1][1])
+			VPADDQ(a[0][0], a[1][0], a[0][0])
+			VPADDQ(a[0][1], a[1][1], a[0][1])
 			VMOVDQU(a[0][0], acc.Offset(0x00))
 			VMOVDQU(a[0][1], acc.Offset(0x20))
 			VZEROUPPER()
@@ -174,7 +188,9 @@ func AVX() {
 			for i := 0; i < 16; i++ {
 				avx2accumLoaded(data, a, 64*i, loadedOffset[i*8], loadedOffset[i*8+32], false, i == 0)
 			}
-			// add a[1] to a[0]
+			// Permute raw sums once before the nonlinear scramble.
+			VPSHUFD(Imm(78), a[1][0], a[1][0])
+			VPSHUFD(Imm(78), a[1][1], a[1][1])
 			VPADDQ(a[0][0], a[1][0], a[0][0])
 			VPADDQ(a[0][1], a[1][1], a[0][1])
 			avx2scramble(prime, key, a[0], 8*16)
@@ -212,7 +228,7 @@ func avx2scramble(prime VecVirtual, key Mem, a [2]VecVirtual, koff int) {
 	}
 }
 
-func avx2accum(data Mem, a [2]VecVirtual, doff, koff int, key Mem, prefetch bool) {
+func avx2accum(data Mem, a [2][2]VecVirtual, doff, koff int, key Mem, prefetch bool) {
 	y0, y1, y2, y10, y11, y12 := YMM(), YMM(), YMM(), YMM(), YMM(), YMM()
 	VMOVDQU(data.Offset(doff+0x00), y0)
 	VMOVDQU(data.Offset(doff+0x20), y10)
@@ -226,12 +242,11 @@ func avx2accum(data Mem, a [2]VecVirtual, doff, koff int, key Mem, prefetch bool
 	VPSHUFD(Imm(49), y11, y12)
 	VPMULUDQ(y1, y2, y1)
 	VPMULUDQ(y11, y12, y11)
-	VPSHUFD(Imm(78), y0, y0)
-	VPSHUFD(Imm(78), y10, y10)
-	VPADDQ(a[0], y1, a[0])
-	VPADDQ(a[1], y11, a[1])
-	VPADDQ(a[0], y0, a[0])
-	VPADDQ(a[1], y10, a[1])
+	// Swapping adjacent 64-bit elements commutes with addition modulo 2^64.
+	VPADDQ(a[0][0], y1, a[0][0])
+	VPADDQ(a[0][1], y11, a[0][1])
+	VPADDQ(a[1][0], y0, a[1][0])
+	VPADDQ(a[1][1], y10, a[1][1])
 }
 
 func avx2accumLoaded(data Mem, a [2][2]VecVirtual, doff int, k0, k1 Op, prefetch, initA1 bool) {
@@ -253,8 +268,6 @@ func avx2accumLoaded(data Mem, a [2][2]VecVirtual, doff int, k0, k1 Op, prefetch
 	VPSHUFD(Imm(49), y11, y12)
 	VPMULUDQ(y1, y2, y1)
 	VPMULUDQ(y11, y12, y11)
-	VPSHUFD(Imm(78), y0, y0)
-	VPSHUFD(Imm(78), y10, y10)
 	VPADDQ(a[0][0], y1, a[0][0])
 	VPADDQ(a[0][1], y11, a[0][1])
 	if !initA1 {

@@ -33,6 +33,7 @@ func SSE() {
 		plen := Load(Param("len"), GP64())
 		prime := XMM()
 		a := [4]VecVirtual{XMM(), XMM(), XMM(), XMM()}
+		raw := [4]VecVirtual{XMM(), XMM(), XMM(), XMM()}
 
 		advance := func(n int) {
 			ADDQ(U32(n*64), data.Base)
@@ -56,15 +57,28 @@ func SSE() {
 		Label("accum_large")
 		{
 			CMPQ(plen, U32(1024))
-			JLE(LabelRef("accum"))
+			JLE(LabelRef("accum_init"))
 
 			for i := 0; i < 16; i++ {
-				sse2accum(data, a, 64*i, 8*i, key)
+				sse2accum(data, a, raw, 64*i, 8*i, key, i == 0)
 			}
 			advance(16)
+			// The scramble is nonlinear, so it must include the permuted raw sums.
+			for n, v := range raw {
+				PSHUFD(Imm(78), v, v)
+				PADDQ(v, a[n])
+			}
 			sse2scramble(prime, key, a, 8*16)
 
 			JMP(LabelRef("accum_large"))
+		}
+
+		Label("accum_init")
+		{
+			// A partial block must not reuse the preceding block's raw sums.
+			for _, v := range raw {
+				PXOR(v, v)
+			}
 		}
 
 		Label("accum")
@@ -72,7 +86,7 @@ func SSE() {
 			CMPQ(plen, Imm(64))
 			JLE(LabelRef("finalize"))
 
-			sse2accum(data, a, 0, 0, skey)
+			sse2accum(data, a, raw, 0, 0, skey, false)
 			advance(1)
 			ADDQ(U32(8), skey.Base)
 
@@ -87,11 +101,16 @@ func SSE() {
 			SUBQ(Imm(64), data.Base)
 			ADDQ(plen, data.Base)
 
-			sse2accum(data, a, 0, 121, key)
+			sse2accum(data, a, raw, 0, 121, key, false)
 		}
 
 		Label("return")
 		{
+			// Include the final stripe before permuting raw sums into the result.
+			for n, v := range raw {
+				PSHUFD(Imm(78), v, v)
+				PADDQ(v, a[n])
+			}
 			MOVOU(a[0], acc.Offset(0x00))
 			MOVOU(a[1], acc.Offset(0x10))
 			MOVOU(a[2], acc.Offset(0x20))
@@ -108,6 +127,7 @@ func SSE() {
 		key := Mem{Base: Load(Param("key"), GP64())}
 		prime := XMM()
 		a := [4]VecVirtual{XMM(), XMM(), XMM(), XMM()}
+		raw := [4]VecVirtual{XMM(), XMM(), XMM(), XMM()}
 
 		Label("load")
 		{
@@ -126,7 +146,12 @@ func SSE() {
 		Label("accum_block")
 		{
 			for i := 0; i < 16; i++ {
-				sse2accum(data, a, 64*i, 8*i, key)
+				sse2accum(data, a, raw, 64*i, 8*i, key, i == 0)
+			}
+			// The scramble is nonlinear, so it must include the permuted raw sums.
+			for n, v := range raw {
+				PSHUFD(Imm(78), v, v)
+				PADDQ(v, a[n])
 			}
 			sse2scramble(prime, key, a, 8*16)
 		}
@@ -166,17 +191,23 @@ func sse2scramble(prime VecVirtual, key Mem, a [4]VecVirtual, koff int) {
 	}
 }
 
-func sse2accum(data Mem, a [4]VecVirtual, doff, koff int, key Mem) {
+func sse2accum(data Mem, a, raw [4]VecVirtual, doff, koff int, key Mem, initRaw bool) {
 	for n, offset := range []int{0x00, 0x10, 0x20, 0x30} {
 		x0, x1, x2 := XMM(), XMM(), XMM()
+		if initRaw {
+			// Seed raw sums with the first stripe instead of zeroing and adding.
+			x0 = raw[n]
+		}
 
 		MOVOU(data.Offset(doff+offset), x0)
 		MOVOU(key.Offset(koff+offset), x1)
 		PXOR(x0, x1)
 		PSHUFD(Imm(49), x1, x2)
 		PMULULQ(x1, x2)
-		PSHUFD(Imm(78), x0, x0)
-		PADDQ(x0, a[n])
+		// Swapping adjacent 64-bit elements commutes with addition modulo 2^64.
+		if !initRaw {
+			PADDQ(x0, raw[n])
+		}
 		PADDQ(x2, a[n])
 	}
 }
