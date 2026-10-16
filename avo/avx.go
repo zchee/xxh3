@@ -142,12 +142,20 @@ func AVX() {
 		}
 	}
 
-	block := func(name string, initFromTable bool) {
-		TEXT(name, NOSPLIT, "func(acc *[8]uint64, data, key *byte)")
+	block := func(name string, initFromTable, multiple bool) {
+		signature := "func(acc *[8]uint64, data, key *byte)"
+		if multiple {
+			signature = "func(acc *[8]uint64, data, key *byte, n uint64)"
+		}
+		TEXT(name, NOSPLIT, signature)
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
 		data := Mem{Base: Load(Param("data"), GP64())}
 		key := Mem{Base: Load(Param("key"), GP64())}
+		var blocks Register
+		if multiple {
+			blocks = Load(Param("n"), GP64())
+		}
 		prime := YMM()
 		a := [2][2]VecVirtual{{YMM(), YMM()}, {YMM(), YMM()}}
 
@@ -156,7 +164,7 @@ func AVX() {
 
 		Label("load")
 		{
-			const loadEarly = false
+			loadEarly := multiple
 			source := acc
 			if initFromTable {
 				// Avoid forwarding narrow Go stores into wide vector loads.
@@ -183,10 +191,15 @@ func AVX() {
 			}
 		}
 
+		if multiple {
+			// Keep setup outside the loop and leave zero-block calls unchanged.
+			TESTQ(blocks, blocks)
+			JE(LabelRef("return"))
+		}
 		Label("accum_block")
 		{
 			for i := 0; i < 16; i++ {
-				avx2accumLoaded(data, a, 64*i, loadedOffset[i*8], loadedOffset[i*8+32], false, i == 0)
+				avx2accumLoaded(data, a, 64*i, loadedOffset[i*8], loadedOffset[i*8+32], multiple, i == 0)
 			}
 			// Permute raw sums once before the nonlinear scramble.
 			VPSHUFD(Imm(78), a[1][0], a[1][0])
@@ -194,6 +207,11 @@ func AVX() {
 			VPADDQ(a[0][0], a[1][0], a[0][0])
 			VPADDQ(a[0][1], a[1][1], a[0][1])
 			avx2scramble(prime, key, a[0], 8*16)
+			if multiple {
+				ADDQ(U32(1024), data.Base)
+				SUBQ(Imm(1), blocks)
+				JNE(LabelRef("accum_block"))
+			}
 		}
 
 		Label("return")
@@ -206,9 +224,10 @@ func AVX() {
 	}
 
 	oneShot("accumAVX2", false)
-	block("accumBlockAVX2", false)
+	block("accumBlockAVX2", false, false)
 	oneShot("accumAVX2Init", true)
-	block("accumBlockAVX2Init", true)
+	block("accumBlockAVX2Init", true, false)
+	block("accumBlocksAVX2", false, true)
 	Generate()
 }
 

@@ -30,6 +30,15 @@ func accumBlockAVX2Init(acc *[8]u64, data, key unsafe.Pointer)       { panic("un
 func accumBlockAVX512Init(acc *[8]u64, data, key unsafe.Pointer)     { panic("unreachable") }
 func accumBlockSSEInit(acc *[8]u64, data, key unsafe.Pointer)        { panic("unreachable") }
 
+// accumBlocksNEON accumulates and scrambles n complete blocks.
+//
+//go:noescape
+func accumBlocksNEON(acc *[8]u64, data, key unsafe.Pointer, n u64)
+
+func accumBlocksAVX2(acc *[8]u64, data, key unsafe.Pointer, n u64)   { panic("unreachable") }
+func accumBlocksAVX512(acc *[8]u64, data, key unsafe.Pointer, n u64) { panic("unreachable") }
+func accumBlocksSSE(acc *[8]u64, data, key unsafe.Pointer, n u64)    { panic("unreachable") }
+
 func withAVX512(cb func())  { cb() }
 func withAVX2(cb func())    { cb() }
 func withSSE2(cb func())    { cb() }

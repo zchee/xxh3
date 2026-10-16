@@ -262,3 +262,63 @@ TEXT ·accumBlockNEON(SB), NOSPLIT, $0-24
 
 	VST1 [V1.D2, V2.D2, V3.D2, V4.D2], (R0)
 	RET
+
+// func accumBlocksNEON(acc *[8]uint64, data *byte, key *byte, n uint64)
+// Keep accumulators and scramble constants live across n complete blocks.
+TEXT ·accumBlocksNEON(SB), NOSPLIT, $0-32
+	MOVD acc+0(FP), R0
+	MOVD data+8(FP), R1
+	MOVD key+16(FP), R2
+	MOVD n+24(FP), R3
+	CBZ R3, blocks_done // Zero blocks must not read input or change the state.
+	VLD1 (R0), [V1.D2, V2.D2, V3.D2, V4.D2]
+	MOVW $0x9e3779b1, R4
+	VDUP R4, V0.S4
+	VSHL $32, V0.D2, V31.D2
+	ADD $8, R2, R8 // Odd-stripe key offsets stay pair-load encodable.
+
+blocks_loop:
+	// Start raw sums and the odd product chain afresh after every scramble.
+	FLDPQ (R1), (F21, F22)
+	FLDPQ 32(R1), (F23, F24)
+	FLDPQ (R2), (F5, F6)
+	FLDPQ 32(R2), (F7, F8)
+	EORUZP(V21, V22, V23, V24)
+	MLA(1, 2, 3, 4)
+	LOADS(64, R8, 0)
+	DSUM
+	EORUZP(V16, V17, V18, V19)
+	MUL4(11, 12, 13, 14)
+
+	STRIPE_EVEN(128, R2, 16)
+	STRIPE_ODD(192, R8, 16)
+	STRIPE_EVEN(256, R2, 32)
+	STRIPE_ODD(320, R8, 32)
+	STRIPE_EVEN(384, R2, 48)
+	STRIPE_ODD(448, R8, 48)
+	STRIPE_EVEN(512, R2, 64)
+	STRIPE_ODD(576, R8, 64)
+	STRIPE_EVEN(640, R2, 80)
+	STRIPE_ODD(704, R8, 80)
+	STRIPE_EVEN(768, R2, 96)
+	STRIPE_ODD(832, R8, 96)
+	STRIPE_EVEN(896, R2, 112)
+	STRIPE_ODD(960, R8, 112)
+
+	// Each complete block ends with the same fold and nonlinear scramble.
+	FOLD(V1, V11, V21)
+	FOLD(V2, V12, V22)
+	FOLD(V3, V13, V23)
+	FOLD(V4, V14, V24)
+	FLDPQ 128(R2), (F5, F6)
+	FLDPQ 160(R2), (F7, F8)
+	SCR(V1, 1, V5)
+	SCR(V2, 2, V6)
+	SCR(V3, 3, V7)
+	SCR(V4, 4, V8)
+	ADD $1024, R1, R1
+	SUBS $1, R3, R3
+	BNE blocks_loop
+	VST1 [V1.D2, V2.D2, V3.D2, V4.D2], (R0)
+blocks_done:
+	RET

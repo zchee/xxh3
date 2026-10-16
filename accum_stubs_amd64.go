@@ -65,6 +65,23 @@ func accumBlockSSEInit(acc *[8]u64, data, key unsafe.Pointer)
 func accumNEON(acc *[8]u64, data, key unsafe.Pointer, len u64) { panic("unreachable") }
 func accumBlockNEON(acc *[8]u64, data, key unsafe.Pointer)     { panic("unreachable") }
 
+// accumBlocksAVX2 accumulates and scrambles n complete blocks.
+//
+//go:noescape
+func accumBlocksAVX2(acc *[8]u64, data, key unsafe.Pointer, n u64)
+
+// accumBlocksAVX512 accumulates and scrambles n complete blocks.
+//
+//go:noescape
+func accumBlocksAVX512(acc *[8]u64, data, key unsafe.Pointer, n u64)
+
+// accumBlocksSSE accumulates and scrambles n complete blocks.
+//
+//go:noescape
+func accumBlocksSSE(acc *[8]u64, data, key unsafe.Pointer, n u64)
+
+func accumBlocksNEON(acc *[8]u64, data, key unsafe.Pointer, n u64) { panic("unreachable") }
+
 func withOverrides(avx512, avx2, sse2 bool, cb func()) {
 	avx512Orig, avx2Orig, sse2Orig := hasAVX512, hasAVX2, hasSSE2
 	hasAVX512, hasAVX2, hasSSE2 = avx512, avx2, sse2

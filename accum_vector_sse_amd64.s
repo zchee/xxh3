@@ -2243,3 +2243,538 @@ TEXT ·accumBlockSSEInit(SB), NOSPLIT, $0-24
 	MOVOU   X3, 32(AX)
 	MOVOU   X4, 48(AX)
 	RET
+
+// func accumBlocksSSE(acc *[8]uint64, data *byte, key *byte, n uint64)
+// Requires: MMX+, SSE2
+TEXT ·accumBlocksSSE(SB), NOSPLIT, $0-32
+	MOVQ  acc+0(FP), AX
+	MOVQ  data+8(FP), CX
+	MOVQ  key+16(FP), DX
+	MOVQ  n+24(FP), BX
+	MOVOU (AX), X1
+	MOVOU 16(AX), X2
+	MOVOU 32(AX), X3
+	MOVOU 48(AX), X4
+	MOVOU prime_sse<>+0(SB), X0
+	TESTQ BX, BX
+	JE    return
+
+accum_block:
+	PREFETCHT0 1024(CX)
+	MOVOU      (CX), X5
+	MOVOU      (DX), X6
+	PXOR       X5, X6
+	PSHUFD     $0x31, X6, X7
+	PMULULQ    X6, X7
+	PADDQ      X7, X1
+	MOVOU      16(CX), X6
+	MOVOU      16(DX), X7
+	PXOR       X6, X7
+	PSHUFD     $0x31, X7, X8
+	PMULULQ    X7, X8
+	PADDQ      X8, X2
+	MOVOU      32(CX), X7
+	MOVOU      32(DX), X8
+	PXOR       X7, X8
+	PSHUFD     $0x31, X8, X9
+	PMULULQ    X8, X9
+	PADDQ      X9, X3
+	MOVOU      48(CX), X8
+	MOVOU      48(DX), X9
+	PXOR       X8, X9
+	PSHUFD     $0x31, X9, X10
+	PMULULQ    X9, X10
+	PADDQ      X10, X4
+	PREFETCHT0 1088(CX)
+	MOVOU      64(CX), X9
+	MOVOU      8(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      80(CX), X9
+	MOVOU      24(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      96(CX), X9
+	MOVOU      40(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      112(CX), X9
+	MOVOU      56(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1152(CX)
+	MOVOU      128(CX), X9
+	MOVOU      16(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      144(CX), X9
+	MOVOU      32(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      160(CX), X9
+	MOVOU      48(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      176(CX), X9
+	MOVOU      64(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1216(CX)
+	MOVOU      192(CX), X9
+	MOVOU      24(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      208(CX), X9
+	MOVOU      40(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      224(CX), X9
+	MOVOU      56(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      240(CX), X9
+	MOVOU      72(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1280(CX)
+	MOVOU      256(CX), X9
+	MOVOU      32(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      272(CX), X9
+	MOVOU      48(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      288(CX), X9
+	MOVOU      64(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      304(CX), X9
+	MOVOU      80(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1344(CX)
+	MOVOU      320(CX), X9
+	MOVOU      40(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      336(CX), X9
+	MOVOU      56(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      352(CX), X9
+	MOVOU      72(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      368(CX), X9
+	MOVOU      88(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1408(CX)
+	MOVOU      384(CX), X9
+	MOVOU      48(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      400(CX), X9
+	MOVOU      64(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      416(CX), X9
+	MOVOU      80(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      432(CX), X9
+	MOVOU      96(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1472(CX)
+	MOVOU      448(CX), X9
+	MOVOU      56(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      464(CX), X9
+	MOVOU      72(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      480(CX), X9
+	MOVOU      88(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      496(CX), X9
+	MOVOU      104(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1536(CX)
+	MOVOU      512(CX), X9
+	MOVOU      64(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      528(CX), X9
+	MOVOU      80(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      544(CX), X9
+	MOVOU      96(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      560(CX), X9
+	MOVOU      112(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1600(CX)
+	MOVOU      576(CX), X9
+	MOVOU      72(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      592(CX), X9
+	MOVOU      88(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      608(CX), X9
+	MOVOU      104(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      624(CX), X9
+	MOVOU      120(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1664(CX)
+	MOVOU      640(CX), X9
+	MOVOU      80(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      656(CX), X9
+	MOVOU      96(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      672(CX), X9
+	MOVOU      112(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      688(CX), X9
+	MOVOU      128(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1728(CX)
+	MOVOU      704(CX), X9
+	MOVOU      88(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      720(CX), X9
+	MOVOU      104(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      736(CX), X9
+	MOVOU      120(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      752(CX), X9
+	MOVOU      136(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1792(CX)
+	MOVOU      768(CX), X9
+	MOVOU      96(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      784(CX), X9
+	MOVOU      112(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      800(CX), X9
+	MOVOU      128(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      816(CX), X9
+	MOVOU      144(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1856(CX)
+	MOVOU      832(CX), X9
+	MOVOU      104(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      848(CX), X9
+	MOVOU      120(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      864(CX), X9
+	MOVOU      136(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      880(CX), X9
+	MOVOU      152(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1920(CX)
+	MOVOU      896(CX), X9
+	MOVOU      112(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      912(CX), X9
+	MOVOU      128(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      928(CX), X9
+	MOVOU      144(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      944(CX), X9
+	MOVOU      160(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PREFETCHT0 1984(CX)
+	MOVOU      960(CX), X9
+	MOVOU      120(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X5
+	PADDQ      X11, X1
+	MOVOU      976(CX), X9
+	MOVOU      136(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X6
+	PADDQ      X11, X2
+	MOVOU      992(CX), X9
+	MOVOU      152(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X7
+	PADDQ      X11, X3
+	MOVOU      1008(CX), X9
+	MOVOU      168(DX), X10
+	PXOR       X9, X10
+	PSHUFD     $0x31, X10, X11
+	PMULULQ    X10, X11
+	PADDQ      X9, X8
+	PADDQ      X11, X4
+	PSHUFD     $0x4e, X5, X5
+	PADDQ      X5, X1
+	PSHUFD     $0x4e, X6, X6
+	PADDQ      X6, X2
+	PSHUFD     $0x4e, X7, X7
+	PADDQ      X7, X3
+	PSHUFD     $0x4e, X8, X8
+	PADDQ      X8, X4
+	MOVOU      X1, X5
+	PSRLQ      $0x2f, X5
+	PXOR       X5, X1
+	MOVOU      128(DX), X5
+	PXOR       X5, X1
+	PSHUFD     $0xf5, X1, X5
+	PMULULQ    X0, X1
+	PMULULQ    X0, X5
+	PSLLQ      $0x20, X5
+	PADDQ      X5, X1
+	MOVOU      X2, X5
+	PSRLQ      $0x2f, X5
+	PXOR       X5, X2
+	MOVOU      144(DX), X5
+	PXOR       X5, X2
+	PSHUFD     $0xf5, X2, X5
+	PMULULQ    X0, X2
+	PMULULQ    X0, X5
+	PSLLQ      $0x20, X5
+	PADDQ      X5, X2
+	MOVOU      X3, X5
+	PSRLQ      $0x2f, X5
+	PXOR       X5, X3
+	MOVOU      160(DX), X5
+	PXOR       X5, X3
+	PSHUFD     $0xf5, X3, X5
+	PMULULQ    X0, X3
+	PMULULQ    X0, X5
+	PSLLQ      $0x20, X5
+	PADDQ      X5, X3
+	MOVOU      X4, X5
+	PSRLQ      $0x2f, X5
+	PXOR       X5, X4
+	MOVOU      176(DX), X5
+	PXOR       X5, X4
+	PSHUFD     $0xf5, X4, X5
+	PMULULQ    X0, X4
+	PMULULQ    X0, X5
+	PSLLQ      $0x20, X5
+	PADDQ      X5, X4
+	ADDQ       $0x00000400, CX
+	SUBQ       $0x01, BX
+	JNE        accum_block
+
+return:
+	MOVOU X1, (AX)
+	MOVOU X2, 16(AX)
+	MOVOU X3, 32(AX)
+	MOVOU X4, 48(AX)
+	RET

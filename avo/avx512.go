@@ -117,12 +117,20 @@ func AVX512() {
 		}
 	}
 
-	block := func(name string, initFromTable bool) {
-		TEXT(name, NOSPLIT, "func(acc *[8]uint64, data, key *byte)")
+	block := func(name string, initFromTable, multiple bool) {
+		signature := "func(acc *[8]uint64, data, key *byte)"
+		if multiple {
+			signature = "func(acc *[8]uint64, data, key *byte, n uint64)"
+		}
+		TEXT(name, NOSPLIT, signature)
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
 		data := Mem{Base: Load(Param("data"), GP64())}
 		key := Mem{Base: Load(Param("key"), GP64())}
+		var blocks Register
+		if multiple {
+			blocks = Load(Param("n"), GP64())
+		}
 		prime := ZMM()
 		// a[0] contains the initial accumulators and completed blocks.
 		// a[1:3] sum products; a[3] and raw sum odd and even raw data.
@@ -140,28 +148,49 @@ func AVX512() {
 			VMOVDQU64(primeData, prime)
 		}
 
-		// Accumulate block of 1024 bytes.
+		var keyReg [17]VecVirtual
+		if multiple {
+			// Amortise all key loads across the complete bulk write.
+			for i := range keyReg {
+				keyReg[i] = ZMM()
+				VMOVDQU64(key.Offset(i*8), keyReg[i])
+			}
+			TESTQ(blocks, blocks)
+			JE(LabelRef("return"))
+		}
+		Label("accum_blocks")
 		{
 			for i := 0; i < 16; i += 2 {
-				// Load keys just in time.
-				key1, key2 := ZMM(), ZMM()
-				VMOVDQU64(key.Offset(i*8), key1)
-				VMOVDQU64(key.Offset(i*8+8), key2)
-
-				avx512accumSplitTwo(data, a, raw, 64*i, key1, key2, false, i == 0)
+				key1, key2 := keyReg[i], keyReg[i+1]
+				if !multiple {
+					// Single-block calls load keys just in time.
+					key1, key2 = ZMM(), ZMM()
+					VMOVDQU64(key.Offset(i*8), key1)
+					VMOVDQU64(key.Offset(i*8+8), key2)
+				}
+				avx512accumSplitTwo(data, a, raw, 64*i, key1, key2, multiple, i == 0)
 			}
 			// Permute both raw sums before combining products and scrambling.
 			VPSHUFD(Imm(78), raw, raw)
 			VPSHUFD(Imm(78), a[3], a[3])
-			key128 := ZMM()
-			VMOVDQU64(key.Offset(16*8), key128)
+			key128 := keyReg[16]
+			if !multiple {
+				key128 = ZMM()
+				VMOVDQU64(key.Offset(16*8), key128)
+			}
 			VPADDQ(a[0], raw, a[0])
 			VPADDQ(a[0], a[1], a[0]) // a0 = a0 + a1
 			VPADDQ(a[2], a[3], a[2]) // a2 = a2 + a3
 			VPADDQ(a[0], a[2], a[0]) // a0 = a0 + a2
 			avx512scramble(prime, key128, a[0])
+			if multiple {
+				ADDQ(U32(1024), data.Base)
+				SUBQ(Imm(1), blocks)
+				JNE(LabelRef("accum_blocks"))
+			}
 		}
 
+		Label("return")
 		{
 			VMOVDQU64(a[0], acc.Offset(0x00))
 			VZEROUPPER()
@@ -170,9 +199,10 @@ func AVX512() {
 	}
 
 	oneShot("accumAVX512", false)
-	block("accumBlockAVX512", false)
+	block("accumBlockAVX512", false, false)
 	oneShot("accumAVX512Init", true)
-	block("accumBlockAVX512Init", true)
+	block("accumBlockAVX512Init", true, false)
+	block("accumBlocksAVX512", false, true)
 	Generate()
 }
 

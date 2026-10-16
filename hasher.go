@@ -191,20 +191,25 @@ func (h *Hasher) updateString(buf string) {
 		h.blk++
 	}
 
-	for len(buf) > len(h.buf) {
+	if len(buf) > len(h.buf) {
+		// Leave the final stripe buffered, including the overlap at block boundaries.
+		n := (len(buf) - _stripe - 1) / _block
 		if hasAVX512 {
-			accumBlockAVX512(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+			accumBlocksAVX512(&h.acc, *(*ptr)(ptr(&buf)), h.key, u64(n))
 		} else if hasAVX2 {
-			accumBlockAVX2(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+			accumBlocksAVX2(&h.acc, *(*ptr)(ptr(&buf)), h.key, u64(n))
 		} else if hasSSE2 {
-			accumBlockSSE(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+			accumBlocksSSE(&h.acc, *(*ptr)(ptr(&buf)), h.key, u64(n))
 		} else if hasNEON {
-			accumBlockNEON(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+			accumBlocksNEON(&h.acc, *(*ptr)(ptr(&buf)), h.key, u64(n))
 		} else {
-			accumBlockScalar(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+			for i := range n {
+				chunk := buf[i*_block:]
+				accumBlockScalar(&h.acc, *(*ptr)(ptr(&chunk)), h.key)
+			}
 		}
-		buf = buf[_block:]
-		h.blk++
+		buf = buf[n*_block:]
+		h.blk += u64(n)
 	}
 
 	h.len = u64(copy(h.buf[:], buf))

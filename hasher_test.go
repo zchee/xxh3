@@ -209,6 +209,52 @@ func TestHasher128CompatSeed(t *testing.T) {
 	}
 }
 
+func TestAccumBlocks(t *testing.T) {
+	data := make([]byte, 16*_block)
+	// Vary successive blocks so a missing data advance changes the result.
+	state := uint64(1)
+	for i := range data {
+		state = state*6364136223846793005 + 1442695040888963407
+		data[i] = byte(state >> 56)
+	}
+	tests := map[string]struct {
+		available bool
+		accum     func(*[8]u64, ptr, ptr, u64)
+	}{
+		"avx512": {hasAVX512, accumBlocksAVX512},
+		"avx2":   {hasAVX2, accumBlocksAVX2},
+		"sse2":   {hasSSE2, accumBlocksSSE},
+		"neon":   {hasNEON, accumBlocksNEON},
+	}
+	for name, tt := range tests {
+		if !tt.available {
+			continue
+		}
+		t.Run(name, func(t *testing.T) {
+			for _, seed := range []uint64{0, 7} {
+				var secret [secretSize]byte
+				k := key
+				if seed != 0 {
+					initSecret(ptr(&secret), seed)
+					k = ptr(&secret)
+				}
+				for _, n := range []int{0, 1, 2, 3, 16} {
+					// Noninitial values also exercise the entry used after a buffered write.
+					got := [8]u64{1, 3, 5, 7, 11, 13, 17, 19}
+					want := got
+					for i := range n {
+						accumBlockScalar(&want, ptr(&data[i*_block]), k)
+					}
+					tt.accum(&got, ptr(&data[0]), k, u64(n))
+					if got != want {
+						t.Fatalf("seed %d blocks %d: got %016x, want %016x", seed, n, got, want)
+					}
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkHasher64(b *testing.B) {
 	rng := rand.New(rand.NewSource(42))
 	for n := uint(4); n <= 28; n += 2 {

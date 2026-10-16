@@ -119,12 +119,20 @@ func SSE() {
 		}
 	}
 
-	block := func(name string, initFromTable bool) {
-		TEXT(name, NOSPLIT, "func(acc *[8]uint64, data, key *byte)")
+	block := func(name string, initFromTable, multiple bool) {
+		signature := "func(acc *[8]uint64, data, key *byte)"
+		if multiple {
+			signature = "func(acc *[8]uint64, data, key *byte, n uint64)"
+		}
+		TEXT(name, NOSPLIT, signature)
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
 		data := Mem{Base: Load(Param("data"), GP64())}
 		key := Mem{Base: Load(Param("key"), GP64())}
+		var blocks Register
+		if multiple {
+			blocks = Load(Param("n"), GP64())
+		}
 		prime := XMM()
 		a := [4]VecVirtual{XMM(), XMM(), XMM(), XMM()}
 		raw := [4]VecVirtual{XMM(), XMM(), XMM(), XMM()}
@@ -143,9 +151,17 @@ func SSE() {
 			MOVOU(primeData, prime)
 		}
 
+		if multiple {
+			TESTQ(blocks, blocks)
+			JE(LabelRef("return"))
+		}
 		Label("accum_block")
 		{
 			for i := 0; i < 16; i++ {
+				if multiple {
+					// Fetch one block ahead without entering another Go call.
+					PREFETCHT0(data.Offset(64*i + 1024))
+				}
 				sse2accum(data, a, raw, 64*i, 8*i, key, i == 0)
 			}
 			// The scramble is nonlinear, so it must include the permuted raw sums.
@@ -154,6 +170,11 @@ func SSE() {
 				PADDQ(v, a[n])
 			}
 			sse2scramble(prime, key, a, 8*16)
+			if multiple {
+				ADDQ(U32(1024), data.Base)
+				SUBQ(Imm(1), blocks)
+				JNE(LabelRef("accum_block"))
+			}
 		}
 
 		Label("return")
@@ -167,9 +188,10 @@ func SSE() {
 	}
 
 	oneShot("accumSSE", false)
-	block("accumBlockSSE", false)
+	block("accumBlockSSE", false, false)
 	oneShot("accumSSEInit", true)
-	block("accumBlockSSEInit", true)
+	block("accumBlockSSEInit", true, false)
+	block("accumBlocksSSE", false, true)
 	Generate()
 }
 
