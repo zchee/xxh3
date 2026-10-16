@@ -14,8 +14,16 @@ func AVX512() {
 		DATA(i, U64(2654435761))
 	}
 
-	{
-		TEXT("accumAVX512", NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
+	initData := GLOBL("init_acc_avx512", RODATA|NOPTR)
+	for i, v := range [...]uint64{
+		3266489917, 11400714785074694791, 14029467366897019727, 1609587929392839161,
+		9650029242287828579, 2246822519, 2870177450012600261, 2654435761,
+	} {
+		DATA(i*8, U64(v))
+	}
+
+	oneShot := func(name string, initFromTable bool) {
+		TEXT(name, NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
 		data := Mem{Base: Load(Param("data"), GP64())}
@@ -28,7 +36,12 @@ func AVX512() {
 
 		Label("load")
 		{
-			VMOVDQU64(acc.Offset(0x00), a[0])
+			source := acc
+			if initFromTable {
+				// Avoid forwarding narrow Go stores into wide vector loads.
+				source = initData
+			}
+			VMOVDQU64(source.Offset(0x00), a[0])
 			VMOVDQU64(primeData, prime)
 		}
 		// Load key at 8 byte offsets in the order we use it.
@@ -95,8 +108,8 @@ func AVX512() {
 		}
 	}
 
-	{
-		TEXT("accumBlockAVX512", NOSPLIT, "func(acc *[8]uint64, data, key *byte)")
+	block := func(name string, initFromTable bool) {
+		TEXT(name, NOSPLIT, "func(acc *[8]uint64, data, key *byte)")
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
 		data := Mem{Base: Load(Param("data"), GP64())}
@@ -108,7 +121,12 @@ func AVX512() {
 
 		Label("load")
 		{
-			VMOVDQU64(acc.Offset(0x00), a[0])
+			source := acc
+			if initFromTable {
+				// Avoid forwarding narrow Go stores into wide vector loads.
+				source = initData
+			}
+			VMOVDQU64(source.Offset(0x00), a[0])
 			VMOVDQU64(primeData, prime)
 		}
 
@@ -138,6 +156,10 @@ func AVX512() {
 		}
 	}
 
+	oneShot("accumAVX512", false)
+	block("accumBlockAVX512", false)
+	oneShot("accumAVX512Init", true)
+	block("accumBlockAVX512Init", true)
 	Generate()
 }
 

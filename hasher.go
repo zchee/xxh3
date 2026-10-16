@@ -122,11 +122,23 @@ func (h *Hasher) updateString(buf string) {
 		buf = buf[need:]
 
 		if hasAVX512 {
-			accumBlockAVX512(&h.acc, ptr(&h.buf), h.key)
+			if h.blk == 0 {
+				accumBlockAVX512Init(&h.acc, ptr(&h.buf), h.key)
+			} else {
+				accumBlockAVX512(&h.acc, ptr(&h.buf), h.key)
+			}
 		} else if hasAVX2 {
-			accumBlockAVX2(&h.acc, ptr(&h.buf), h.key)
+			if h.blk == 0 {
+				accumBlockAVX2Init(&h.acc, ptr(&h.buf), h.key)
+			} else {
+				accumBlockAVX2(&h.acc, ptr(&h.buf), h.key)
+			}
 		} else if hasSSE2 {
-			accumBlockSSE(&h.acc, ptr(&h.buf), h.key)
+			if h.blk == 0 {
+				accumBlockSSEInit(&h.acc, ptr(&h.buf), h.key)
+			} else {
+				accumBlockSSE(&h.acc, ptr(&h.buf), h.key)
+			}
 		} else if hasNEON {
 			accumBlockNEON(&h.acc, ptr(&h.buf), h.key)
 		} else {
@@ -160,6 +172,23 @@ func (h *Hasher) updateString(buf string) {
 		h.blk++
 		h.len = 0
 		buf = buf[bridge:]
+	}
+
+	// Peel the first block so subsequent blocks never test the initial state.
+	if h.blk == 0 && len(buf) > len(h.buf) {
+		if hasAVX512 {
+			accumBlockAVX512Init(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+		} else if hasAVX2 {
+			accumBlockAVX2Init(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+		} else if hasSSE2 {
+			accumBlockSSEInit(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+		} else if hasNEON {
+			accumBlockNEON(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+		} else {
+			accumBlockScalar(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+		}
+		buf = buf[_block:]
+		h.blk++
 	}
 
 	for len(buf) > len(h.buf) {

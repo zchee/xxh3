@@ -107,21 +107,23 @@ func hashAnySeed(s str, seed uint64) (acc u64) {
 			initSecret(secret, seed)
 		}
 
-		accs := [8]u64{
-			prime32_3, prime64_1, prime64_2, prime64_3,
-			prime64_4, prime32_2, prime64_5, prime32_1,
-		}
-
+		var accs [8]u64
 		if hasAVX512 && l >= avx512Switch {
-			accumAVX512(&accs, p, secret, u64(l))
+			accumAVX512Init(&accs, p, secret, u64(l))
 		} else if hasAVX2 {
-			accumAVX2(&accs, p, secret, u64(l))
+			accumAVX2Init(&accs, p, secret, u64(l))
 		} else if hasSSE2 {
-			accumSSE(&accs, p, secret, u64(l))
-		} else if hasNEON {
-			accumNEON(&accs, p, secret, u64(l))
+			accumSSEInit(&accs, p, secret, u64(l))
 		} else {
-			accumScalarSeed(&accs, p, secret, u64(l))
+			accs = [8]u64{
+				prime32_3, prime64_1, prime64_2, prime64_3,
+				prime64_4, prime32_2, prime64_5, prime32_1,
+			}
+			if hasNEON {
+				accumNEON(&accs, p, secret, u64(l))
+			} else {
+				accumScalarSeed(&accs, p, secret, u64(l))
+			}
 		}
 
 		// merge accs

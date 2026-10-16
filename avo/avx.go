@@ -13,12 +13,20 @@ func AVX() {
 		DATA(i, U64(2654435761))
 	}
 
-	{
+	initData := GLOBL("init_acc_avx", RODATA|NOPTR)
+	for i, v := range [...]uint64{
+		3266489917, 11400714785074694791, 14029467366897019727, 1609587929392839161,
+		9650029242287828579, 2246822519, 2870177450012600261, 2654435761,
+	} {
+		DATA(i*8, U64(v))
+	}
+
+	oneShot := func(name string, initFromTable bool) {
 		// loadEarly will fill up remaining registers with key values.
 		// This can reduce L1 fetch pressure.
 		const loadEarly = true
 
-		TEXT("accumAVX2", NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
+		TEXT(name, NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
 		// %rdi, %rsi, %rdx, %rcx
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
@@ -42,8 +50,13 @@ func AVX() {
 
 		Label("load")
 		{
-			VMOVDQU(acc.Offset(0x00), a[0][0])
-			VMOVDQU(acc.Offset(0x20), a[0][1])
+			source := acc
+			if initFromTable {
+				// Avoid forwarding narrow Go stores into wide vector loads.
+				source = initData
+			}
+			VMOVDQU(source.Offset(0x00), a[0][0])
+			VMOVDQU(source.Offset(0x20), a[0][1])
 			VMOVDQU(primeData, prime)
 
 			CMPQ(plen, U32(1024))
@@ -115,8 +128,8 @@ func AVX() {
 		}
 	}
 
-	{
-		TEXT("accumBlockAVX2", NOSPLIT, "func(acc *[8]uint64, data, key *byte)")
+	block := func(name string, initFromTable bool) {
+		TEXT(name, NOSPLIT, "func(acc *[8]uint64, data, key *byte)")
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
 		data := Mem{Base: Load(Param("data"), GP64())}
@@ -130,8 +143,13 @@ func AVX() {
 		Label("load")
 		{
 			const loadEarly = false
-			VMOVDQU(acc.Offset(0x00), a[0][0])
-			VMOVDQU(acc.Offset(0x20), a[0][1])
+			source := acc
+			if initFromTable {
+				// Avoid forwarding narrow Go stores into wide vector loads.
+				source = initData
+			}
+			VMOVDQU(source.Offset(0x00), a[0][0])
+			VMOVDQU(source.Offset(0x20), a[0][1])
 			VMOVDQU(primeData, prime)
 
 			used := 0
@@ -171,6 +189,10 @@ func AVX() {
 		}
 	}
 
+	oneShot("accumAVX2", false)
+	block("accumBlockAVX2", false)
+	oneShot("accumAVX2Init", true)
+	block("accumBlockAVX2Init", true)
 	Generate()
 }
 

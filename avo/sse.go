@@ -14,8 +14,16 @@ func SSE() {
 	DATA(8, U32(2654435761))
 	DATA(12, U32(2654435761))
 
-	{
-		TEXT("accumSSE", NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
+	initData := GLOBL("init_acc_sse", RODATA|NOPTR)
+	for i, v := range [...]uint64{
+		3266489917, 11400714785074694791, 14029467366897019727, 1609587929392839161,
+		9650029242287828579, 2246822519, 2870177450012600261, 2654435761,
+	} {
+		DATA(i*8, U64(v))
+	}
+
+	oneShot := func(name string, initFromTable bool) {
+		TEXT(name, NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
 		// %rdi, %rsi, %rdx, %rcx
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
@@ -33,10 +41,15 @@ func SSE() {
 
 		Label("load")
 		{
-			MOVOU(acc.Offset(0x00), a[0])
-			MOVOU(acc.Offset(0x10), a[1])
-			MOVOU(acc.Offset(0x20), a[2])
-			MOVOU(acc.Offset(0x30), a[3])
+			source := acc
+			if initFromTable {
+				// Keep initialisation independent of the caller's accumulator stores.
+				source = initData
+			}
+			MOVOU(source.Offset(0x00), a[0])
+			MOVOU(source.Offset(0x10), a[1])
+			MOVOU(source.Offset(0x20), a[2])
+			MOVOU(source.Offset(0x30), a[3])
 			MOVOU(primeData, prime)
 		}
 
@@ -87,8 +100,8 @@ func SSE() {
 		}
 	}
 
-	{
-		TEXT("accumBlockSSE", NOSPLIT, "func(acc *[8]uint64, data, key *byte)")
+	block := func(name string, initFromTable bool) {
+		TEXT(name, NOSPLIT, "func(acc *[8]uint64, data, key *byte)")
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
 		data := Mem{Base: Load(Param("data"), GP64())}
@@ -98,10 +111,15 @@ func SSE() {
 
 		Label("load")
 		{
-			MOVOU(acc.Offset(0x00), a[0])
-			MOVOU(acc.Offset(0x10), a[1])
-			MOVOU(acc.Offset(0x20), a[2])
-			MOVOU(acc.Offset(0x30), a[3])
+			source := acc
+			if initFromTable {
+				// Keep initialisation independent of the caller's accumulator stores.
+				source = initData
+			}
+			MOVOU(source.Offset(0x00), a[0])
+			MOVOU(source.Offset(0x10), a[1])
+			MOVOU(source.Offset(0x20), a[2])
+			MOVOU(source.Offset(0x30), a[3])
 			MOVOU(primeData, prime)
 		}
 
@@ -123,6 +141,10 @@ func SSE() {
 		}
 	}
 
+	oneShot("accumSSE", false)
+	block("accumBlockSSE", false)
+	oneShot("accumSSEInit", true)
+	block("accumBlockSSEInit", true)
 	Generate()
 }
 

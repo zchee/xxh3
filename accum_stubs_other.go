@@ -23,6 +23,13 @@ func accumBlockAVX512(acc *[8]u64, data, key unsafe.Pointer)     { panic("unreac
 func accumNEON(acc *[8]u64, data, key unsafe.Pointer, len u64)   { panic("unreachable") }
 func accumBlockNEON(acc *[8]u64, data, key unsafe.Pointer)       { panic("unreachable") }
 
+func accumAVX2Init(acc *[8]u64, data, key unsafe.Pointer, len u64)   { panic("unreachable") }
+func accumAVX512Init(acc *[8]u64, data, key unsafe.Pointer, len u64) { panic("unreachable") }
+func accumSSEInit(acc *[8]u64, data, key unsafe.Pointer, len u64)    { panic("unreachable") }
+func accumBlockAVX2Init(acc *[8]u64, data, key unsafe.Pointer)       { panic("unreachable") }
+func accumBlockAVX512Init(acc *[8]u64, data, key unsafe.Pointer)     { panic("unreachable") }
+func accumBlockSSEInit(acc *[8]u64, data, key unsafe.Pointer)        { panic("unreachable") }
+
 func withAVX512(cb func())  { cb() }
 func withAVX2(cb func())    { cb() }
 func withSSE2(cb func())    { cb() }

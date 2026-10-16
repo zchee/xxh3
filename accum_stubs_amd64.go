@@ -32,6 +32,36 @@ func accumBlockAVX512(acc *[8]u64, data, key unsafe.Pointer)
 //go:noescape
 func accumBlockSSE(acc *[8]u64, data, key unsafe.Pointer)
 
+// accumAVX2Init ignores the contents of acc, starts from the xxh3 initial accumulators and stores the result in acc.
+//
+//go:noescape
+func accumAVX2Init(acc *[8]u64, data, key unsafe.Pointer, len u64)
+
+// accumAVX512Init ignores the contents of acc, starts from the xxh3 initial accumulators and stores the result in acc.
+//
+//go:noescape
+func accumAVX512Init(acc *[8]u64, data, key unsafe.Pointer, len u64)
+
+// accumSSEInit ignores the contents of acc, starts from the xxh3 initial accumulators and stores the result in acc.
+//
+//go:noescape
+func accumSSEInit(acc *[8]u64, data, key unsafe.Pointer, len u64)
+
+// accumBlockAVX2Init ignores the contents of acc, starts from the xxh3 initial accumulators and stores the result in acc.
+//
+//go:noescape
+func accumBlockAVX2Init(acc *[8]u64, data, key unsafe.Pointer)
+
+// accumBlockAVX512Init ignores the contents of acc, starts from the xxh3 initial accumulators and stores the result in acc.
+//
+//go:noescape
+func accumBlockAVX512Init(acc *[8]u64, data, key unsafe.Pointer)
+
+// accumBlockSSEInit ignores the contents of acc, starts from the xxh3 initial accumulators and stores the result in acc.
+//
+//go:noescape
+func accumBlockSSEInit(acc *[8]u64, data, key unsafe.Pointer)
+
 func accumNEON(acc *[8]u64, data, key unsafe.Pointer, len u64) { panic("unreachable") }
 func accumBlockNEON(acc *[8]u64, data, key unsafe.Pointer)     { panic("unreachable") }
 
