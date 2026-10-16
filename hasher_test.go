@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
+
+	"github.com/zeebo/assert"
 )
 
 const (
@@ -239,16 +241,16 @@ func TestAccumBlocks(t *testing.T) {
 					k = ptr(&secret)
 				}
 				for _, n := range []int{0, 1, 2, 3, 16} {
-					// Noninitial values also exercise the entry used after a buffered write.
-					got := [8]u64{1, 3, 5, 7, 11, 13, 17, 19}
-					want := got
-					for i := range n {
-						accumBlockScalar(&want, ptr(&data[i*_block]), k)
-					}
-					tt.accum(&got, ptr(&data[0]), k, u64(n))
-					if got != want {
-						t.Fatalf("seed %d blocks %d: got %016x, want %016x", seed, n, got, want)
-					}
+					t.Run(fmt.Sprintf("seed=%d,blocks=%d", seed, n), func(t *testing.T) {
+						// Noninitial values also exercise the entry used after a buffered write.
+						got := [8]u64{1, 3, 5, 7, 11, 13, 17, 19}
+						want := got
+						for i := range n {
+							accumBlockScalar(&want, ptr(&data[i*_block]), k)
+						}
+						tt.accum(&got, ptr(&data[0]), k, u64(n))
+						assert.Equal(t, got, want)
+					})
 				}
 			}
 		})
