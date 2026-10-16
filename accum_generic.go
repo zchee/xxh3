@@ -2,9 +2,12 @@ package xxh3
 
 import "unsafe"
 
-// avx512Switch is the size at which the avx512 code is used.
-// Bigger blocks benefit more.
-const avx512Switch = 1 << 10
+// avx512Switch is the longest input still hashed with AVX2 when AVX512 is
+// available. For shorter inputs, AVX512 setup costs more than its wider stripes
+// save. The value was measured on an Intel Xeon Platinum 8481C (Sapphire Rapids);
+// the crossover depends on the microarchitecture and was not measured on AMD Zen
+// or Skylake-X.
+const avx512Switch = 640
 
 func accumScalar(accs *[8]u64, p, secret ptr, l u64) {
 	if secret != key {

@@ -30,7 +30,7 @@ func BenchmarkFixed64(b *testing.B) {
 		}
 
 		if i > 240 {
-			if i >= avx512Switch && hasAVX512 {
+			if i > avx512Switch && hasAVX512 {
 				withAVX512(func() { b.Run(fmt.Sprintf("%d-AVX512", i), bench) })
 			}
 			if hasAVX2 {

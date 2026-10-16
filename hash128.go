@@ -218,7 +218,7 @@ func hashAny128(s str) (acc u128) {
 		acc.Hi = ^(u64(l) * prime64_2)
 
 		var accs [8]u64
-		if hasAVX512 && l >= avx512Switch {
+		if hasAVX512 && l > avx512Switch {
 			accumAVX512Init(&accs, p, key, u64(l))
 		} else if hasAVX2 {
 			accumAVX2Init(&accs, p, key, u64(l))

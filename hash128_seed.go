@@ -227,7 +227,7 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 		}
 
 		var accs [8]u64
-		if hasAVX512 && l >= avx512Switch {
+		if hasAVX512 && l > avx512Switch {
 			accumAVX512Init(&accs, p, secret, u64(l))
 		} else if hasAVX2 {
 			accumAVX2Init(&accs, p, secret, u64(l))

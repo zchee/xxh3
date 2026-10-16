@@ -101,7 +101,7 @@ func hashAny(s str) (acc u64) {
 		acc = u64(l) * prime64_1
 
 		var accs [8]u64
-		if hasAVX512 && l >= avx512Switch {
+		if hasAVX512 && l > avx512Switch {
 			accumAVX512Init(&accs, p, key, u64(l))
 		} else if hasAVX2 {
 			accumAVX2Init(&accs, p, key, u64(l))
