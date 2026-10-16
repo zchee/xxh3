@@ -27,7 +27,6 @@ func BenchmarkFixed64(b *testing.B) {
 				}
 				runtime.KeepAlive(acc)
 			})
-
 		}
 
 		if i > 240 {

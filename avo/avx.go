@@ -38,7 +38,7 @@ func AVX() {
 		}
 
 		// Preload a number of keys to fill regs, and interleave them.
-		var loadedOffset = make(map[int]Op)
+		loadedOffset := make(map[int]Op)
 
 		Label("load")
 		{
@@ -125,7 +125,7 @@ func AVX() {
 		a := [2][2]VecVirtual{{YMM(), YMM()}, {YMM(), YMM()}}
 
 		// Preload a number of keys to fill regs, and interleave them.
-		var loadedOffset = make(map[int]Op)
+		loadedOffset := make(map[int]Op)
 
 		Label("load")
 		{

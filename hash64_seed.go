@@ -5,7 +5,6 @@ import "math/bits"
 // HashSeed returns the hash of the byte slice with given seed.
 func HashSeed(b []byte, seed uint64) uint64 {
 	return hashAnySeed(*(*str)(ptr(&b)), seed)
-
 }
 
 // HashStringSeed returns the hash of the string slice with given seed.

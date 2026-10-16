@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/cespare/xxhash"
+
 	"github.com/zeebo/xxh3"
 )
 

@@ -10,9 +10,7 @@ type Hasher128 struct {
 	h Hasher
 }
 
-var (
-	_ hash.Hash = (*Hasher128)(nil)
-)
+var _ hash.Hash = (*Hasher128)(nil)
 
 // New128 returns a new 128 bit Hasher that implements the hash.Hash interface.
 func New128() *Hasher128 {
