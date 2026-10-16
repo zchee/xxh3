@@ -101,39 +101,43 @@ func hashAnySeed(s str, seed uint64) (acc u64) {
 		return xxh3Avalanche(acc)
 
 	default:
-		acc = u64(l) * prime64_1
-
 		secret := key
 		if seed != 0 {
 			secret = ptr(&[secretSize]byte{})
 			initSecret(secret, seed)
 		}
-
-		var accs [8]u64
-		if hasAVX512 && l > avx512Switch {
-			accumAVX512Init(&accs, p, secret, u64(l))
-		} else if hasAVX2 {
-			accumAVX2Init(&accs, p, secret, u64(l))
-		} else if hasSSE2 {
-			accumSSEInit(&accs, p, secret, u64(l))
-		} else {
-			accs = [8]u64{
-				prime32_3, prime64_1, prime64_2, prime64_3,
-				prime64_4, prime32_2, prime64_5, prime32_1,
-			}
-			if hasNEON {
-				accumNEON(&accs, p, secret, u64(l))
-			} else {
-				accumScalarSeed(&accs, p, secret, u64(l))
-			}
-		}
-
-		// merge accs
-		acc += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))
-		acc += mulFold64(accs[2]^readU64(secret, 27), accs[3]^readU64(secret, 35))
-		acc += mulFold64(accs[4]^readU64(secret, 43), accs[5]^readU64(secret, 51))
-		acc += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
-
-		return xxh3Avalanche(acc)
+		return hashLargeSecret(p, l, secret)
 	}
+}
+
+// hashLargeSecret hashes more than 240 bytes with an already-derived secret.
+func hashLargeSecret(p ptr, l uint, secret ptr) u64 {
+	acc := u64(l) * prime64_1
+
+	var accs [8]u64
+	if hasAVX512 && l > avx512Switch {
+		accumAVX512Init(&accs, p, secret, u64(l))
+	} else if hasAVX2 {
+		accumAVX2Init(&accs, p, secret, u64(l))
+	} else if hasSSE2 {
+		accumSSEInit(&accs, p, secret, u64(l))
+	} else {
+		accs = [8]u64{
+			prime32_3, prime64_1, prime64_2, prime64_3,
+			prime64_4, prime32_2, prime64_5, prime32_1,
+		}
+		if hasNEON {
+			accumNEON(&accs, p, secret, u64(l))
+		} else {
+			accumScalarSeed(&accs, p, secret, u64(l))
+		}
+	}
+
+	// merge accs
+	acc += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))
+	acc += mulFold64(accs[2]^readU64(secret, 27), accs[3]^readU64(secret, 35))
+	acc += mulFold64(accs[4]^readU64(secret, 43), accs[5]^readU64(secret, 51))
+	acc += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
+
+	return xxh3Avalanche(acc)
 }

@@ -221,6 +221,9 @@ func (h *Hasher) Sum64() uint64 {
 		if h.seed == 0 {
 			return Hash(h.buf[:h.len])
 		}
+		if h.len > 240 {
+			return hashLargeSecret(ptr(&h.buf), uint(h.len), h.key)
+		}
 		return HashSeed(h.buf[:h.len], h.seed)
 	}
 
@@ -269,6 +272,9 @@ func (h *Hasher) Sum128() Uint128 {
 	if h.blk == 0 {
 		if h.seed == 0 {
 			return Hash128(h.buf[:h.len])
+		}
+		if h.len > 240 {
+			return hashLarge128Secret(ptr(&h.buf), uint(h.len), h.key)
 		}
 		return Hash128Seed(h.buf[:h.len], h.seed)
 	}

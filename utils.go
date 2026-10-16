@@ -71,12 +71,31 @@ func writeU64(p ptr, o ui, v u64) {
 const secretSize = 192
 
 func initSecret(secret ptr, seed u64) {
-	for i := range ui(secretSize / 16) {
-		lo := readU64(key, 16*i) + seed
-		hi := readU64(key, 16*i+8) - seed
-		writeU64(secret, 16*i, lo)
-		writeU64(secret, 16*i+8, hi)
-	}
+	k := key
+	writeU64(secret, 0, readU64(k, 0)+seed)
+	writeU64(secret, 8, readU64(k, 8)-seed)
+	writeU64(secret, 16, readU64(k, 16)+seed)
+	writeU64(secret, 24, readU64(k, 24)-seed)
+	writeU64(secret, 32, readU64(k, 32)+seed)
+	writeU64(secret, 40, readU64(k, 40)-seed)
+	writeU64(secret, 48, readU64(k, 48)+seed)
+	writeU64(secret, 56, readU64(k, 56)-seed)
+	writeU64(secret, 64, readU64(k, 64)+seed)
+	writeU64(secret, 72, readU64(k, 72)-seed)
+	writeU64(secret, 80, readU64(k, 80)+seed)
+	writeU64(secret, 88, readU64(k, 88)-seed)
+	writeU64(secret, 96, readU64(k, 96)+seed)
+	writeU64(secret, 104, readU64(k, 104)-seed)
+	writeU64(secret, 112, readU64(k, 112)+seed)
+	writeU64(secret, 120, readU64(k, 120)-seed)
+	writeU64(secret, 128, readU64(k, 128)+seed)
+	writeU64(secret, 136, readU64(k, 136)-seed)
+	writeU64(secret, 144, readU64(k, 144)+seed)
+	writeU64(secret, 152, readU64(k, 152)-seed)
+	writeU64(secret, 160, readU64(k, 160)+seed)
+	writeU64(secret, 168, readU64(k, 168)-seed)
+	writeU64(secret, 176, readU64(k, 176)+seed)
+	writeU64(secret, 184, readU64(k, 184)-seed)
 }
 
 func xxh64AvalancheSmall(x u64) u64 {

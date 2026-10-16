@@ -219,52 +219,55 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 		return acc
 
 	default:
-		acc.Lo = u64(l) * prime64_1
-		acc.Hi = ^(u64(l) * prime64_2)
-
 		secret := key
 		if seed != 0 {
 			secret = ptr(&[secretSize]byte{})
 			initSecret(secret, seed)
 		}
-
-		var accs [8]u64
-		if hasAVX512 && l > avx512Switch {
-			accumAVX512Init(&accs, p, secret, u64(l))
-		} else if hasAVX2 {
-			accumAVX2Init(&accs, p, secret, u64(l))
-		} else if hasSSE2 {
-			accumSSEInit(&accs, p, secret, u64(l))
-		} else {
-			accs = [8]u64{
-				prime32_3, prime64_1, prime64_2, prime64_3,
-				prime64_4, prime32_2, prime64_5, prime32_1,
-			}
-			if hasNEON {
-				accumNEON(&accs, p, secret, u64(l))
-			} else {
-				accumScalar(&accs, p, secret, u64(l))
-			}
-		}
-
-		// merge accs
-		const hi_off = 117 - 11
-
-		acc.Lo += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))
-		acc.Hi += mulFold64(accs[0]^readU64(secret, 11+hi_off), accs[1]^readU64(secret, 19+hi_off))
-
-		acc.Lo += mulFold64(accs[2]^readU64(secret, 27), accs[3]^readU64(secret, 35))
-		acc.Hi += mulFold64(accs[2]^readU64(secret, 27+hi_off), accs[3]^readU64(secret, 35+hi_off))
-
-		acc.Lo += mulFold64(accs[4]^readU64(secret, 43), accs[5]^readU64(secret, 51))
-		acc.Hi += mulFold64(accs[4]^readU64(secret, 43+hi_off), accs[5]^readU64(secret, 51+hi_off))
-
-		acc.Lo += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
-		acc.Hi += mulFold64(accs[6]^readU64(secret, 59+hi_off), accs[7]^readU64(secret, 67+hi_off))
-
-		acc.Lo = xxh3Avalanche(acc.Lo)
-		acc.Hi = xxh3Avalanche(acc.Hi)
-
-		return acc
+		return hashLarge128Secret(p, l, secret)
 	}
+}
+
+// hashLarge128Secret hashes more than 240 bytes with an already-derived secret.
+func hashLarge128Secret(p ptr, l uint, secret ptr) u128 {
+	acc := u128{Lo: u64(l) * prime64_1, Hi: ^(u64(l) * prime64_2)}
+
+	var accs [8]u64
+	if hasAVX512 && l > avx512Switch {
+		accumAVX512Init(&accs, p, secret, u64(l))
+	} else if hasAVX2 {
+		accumAVX2Init(&accs, p, secret, u64(l))
+	} else if hasSSE2 {
+		accumSSEInit(&accs, p, secret, u64(l))
+	} else {
+		accs = [8]u64{
+			prime32_3, prime64_1, prime64_2, prime64_3,
+			prime64_4, prime32_2, prime64_5, prime32_1,
+		}
+		if hasNEON {
+			accumNEON(&accs, p, secret, u64(l))
+		} else {
+			accumScalar(&accs, p, secret, u64(l))
+		}
+	}
+
+	// merge accs
+	const hi_off = 117 - 11
+
+	acc.Lo += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))
+	acc.Hi += mulFold64(accs[0]^readU64(secret, 11+hi_off), accs[1]^readU64(secret, 19+hi_off))
+
+	acc.Lo += mulFold64(accs[2]^readU64(secret, 27), accs[3]^readU64(secret, 35))
+	acc.Hi += mulFold64(accs[2]^readU64(secret, 27+hi_off), accs[3]^readU64(secret, 35+hi_off))
+
+	acc.Lo += mulFold64(accs[4]^readU64(secret, 43), accs[5]^readU64(secret, 51))
+	acc.Hi += mulFold64(accs[4]^readU64(secret, 43+hi_off), accs[5]^readU64(secret, 51+hi_off))
+
+	acc.Lo += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
+	acc.Hi += mulFold64(accs[6]^readU64(secret, 59+hi_off), accs[7]^readU64(secret, 67+hi_off))
+
+	acc.Lo = xxh3Avalanche(acc.Lo)
+	acc.Hi = xxh3Avalanche(acc.Hi)
+
+	return acc
 }
