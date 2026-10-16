@@ -67,16 +67,6 @@
 	VMUL V31.S4, VA.S4, VA.S4    \
 	VUMLAL V0.S2, V20.S2, VA.D2
 
-// XTN Vd.2S, Vn.2D - Narrow 64-bit to 32-bit (low part)
-// Encoding: 0|0|0|01110|10|100001|001010|Rn|Rd = 0x0EA12800
-#define XTN_2S_2D(Vd, Vn) WORD $(0x0EA12800 | ((Vn) << 5) | (Vd))
-
-// SHRN #32, Vn.2D, Vd.2S - Shift right 32 and narrow (high part)
-#define SHRN_32_2D_2S(Vd, Vn) WORD $(0x0F208400 | ((Vn) << 5) | (Vd))
-
-// UMULL Vd.2D, Vn.2S, Vm.2S - Widening multiply 32x32→64
-#define UMULL_2D_2S_2S(Vd, Vn, Vm) WORD $(0x2EA0C000 | ((Vm) << 16) | ((Vn) << 5) | (Vd))
-
 // func accumNEON(acc *[8]uint64, data *byte, key *byte, len uint64)
 TEXT ·accumNEON(SB), NOSPLIT, $0-32
 	MOVD acc+0(FP), R0
@@ -146,129 +136,56 @@ accum_large:
 	// Align the short-input entry so its setup is independent of the bulk body size.
 	PCALIGN $16
 accum:
-	// If no remaining bytes, we're done
+	// A zero-length defensive call leaves the incoming accumulators unchanged.
 	CBZ R3, done
 
-	// Compute number of full stripes: R6 = (R3-1) / 64
+	// Process (length-1)/64 regular stripes, then the overlapping last stripe.
 	SUB $1, R3, R6
 	LSR $6, R6, R6
+	ADD R3, R1, R7
+	SUB $64, R7, R7 // Preserve the last-stripe address as R1 advances.
+	MOVD R2, R5 // The regular key offset advances by eight bytes per stripe.
+	VEOR V21.B16, V21.B16, V21.B16
+	VEOR V22.B16, V22.B16, V22.B16
+	VEOR V23.B16, V23.B16, V23.B16
+	VEOR V24.B16, V24.B16, V24.B16
 	CBZ R6, finalize
-
-	MOVD $0, R4 // key offset
 
 	// Keep the repeated tail stripe aligned despite changes to the bulk kernel.
 	PCALIGN $16
 accum_loop:
-	// Process one 64-byte stripe
-	ADD  R4, R2, R5
-	VLD1 (R1), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V1.D2, V1.D2
-	VADD V9.D2, V1.D2, V1.D2
-
-	ADD  $16, R1, R7
-	ADD  $16, R5, R5
-	VLD1 (R7), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V2.D2, V2.D2
-	VADD V9.D2, V2.D2, V2.D2
-
-	ADD  $32, R1, R7
-	ADD  $16, R5, R5
-	VLD1 (R7), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V3.D2, V3.D2
-	VADD V9.D2, V3.D2, V3.D2
-
-	ADD  $48, R1, R7
-	ADD  $16, R5, R5
-	VLD1 (R7), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V4.D2, V4.D2
-	VADD V9.D2, V4.D2, V4.D2
-
-	ADD  $64, R1, R1
-	SUB  $64, R3, R3
-	ADD  $8, R4, R4
-	AND  $127, R4, R4
+	// Load the upper pair before post-indexing R1 past this complete stripe.
+	FLDPQ 32(R1), (F18, F19)
+	FLDPQ.P 64(R1), (F16, F17)
+	FLDPQ (R5), (F5, F6)
+	FLDPQ 32(R5), (F7, F8)
+	ADD $8, R5, R5
+	DSUM
+	EORUZP(V16, V17, V18, V19)
+	MLA(V1, V2, V3, V4)
 	SUBS $1, R6, R6
-	BNE  accum_loop
+	BNE accum_loop
 
 finalize:
-	// Always process final stripe if there's remaining data (R3 > 0)
-	CBZ R3, done
+	// The overlapping last stripe always uses key offset 121, not the next key.
+	ADD $121, R2, R5
+	FLDPQ (R7), (F16, F17)
+	FLDPQ 32(R7), (F18, F19)
+	FLDPQ (R5), (F5, F6)
+	FLDPQ 32(R5), (F7, F8)
+	DSUM
+	EORUZP(V16, V17, V18, V19)
+	MLA(V1, V2, V3, V4)
 
-	// Adjust data pointer to last 64 bytes: R1 = R1 + R3 - 64
-	ADD R3, R1, R6
-	SUB $64, R6, R6
-
-	// Final key offset is 121
-	ADD  $121, R2, R5
-	VLD1 (R6), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V1.D2, V1.D2
-	VADD V9.D2, V1.D2, V1.D2
-
-	ADD  $16, R6, R6
-	ADD  $16, R5, R5
-	VLD1 (R6), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V2.D2, V2.D2
-	VADD V9.D2, V2.D2, V2.D2
-
-	ADD  $16, R6, R6
-	ADD  $16, R5, R5
-	VLD1 (R6), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V3.D2, V3.D2
-	VADD V9.D2, V3.D2, V3.D2
-
-	ADD  $16, R6, R6
-	ADD  $16, R5, R5
-	VLD1 (R6), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V4.D2, V4.D2
-	VADD V9.D2, V4.D2, V4.D2
+	// Fold swapped raw data once, including the overlapping final stripe.
+	VEXT $8, V21.B16, V21.B16, V21.B16
+	VADD V21.D2, V1.D2, V1.D2
+	VEXT $8, V22.B16, V22.B16, V22.B16
+	VADD V22.D2, V2.D2, V2.D2
+	VEXT $8, V23.B16, V23.B16, V23.B16
+	VADD V23.D2, V3.D2, V3.D2
+	VEXT $8, V24.B16, V24.B16, V24.B16
+	VADD V24.D2, V4.D2, V4.D2
 
 done:
 	VST1 [V1.D2, V2.D2, V3.D2, V4.D2], (R0)
