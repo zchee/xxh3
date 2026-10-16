@@ -94,6 +94,7 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 
 	case l <= 128:
 		acc.Lo = u64(l) * prime64_1
+		k := key
 
 		if l > 32 {
 			if l > 64 {
@@ -101,9 +102,9 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 					in8, in7 := readU64(p, ui(l)-8*8), readU64(p, ui(l)-7*8)
 					i6, i7 := readU64(p, 6*8), readU64(p, 7*8)
 
-					acc.Hi += mulFold64(in8^(key64_112+seed), in7^(key64_120-seed))
+					acc.Hi += mulFold64(in8^(midKey(k, 112, key64_112)+seed), in7^(midKey(k, 120, key64_120)-seed))
 					acc.Hi ^= i6 + i7
-					acc.Lo += mulFold64(i6^(key64_096+seed), i7^(key64_104-seed))
+					acc.Lo += mulFold64(i6^(midKey(k, 96, key64_096)+seed), i7^(midKey(k, 104, key64_104)-seed))
 					acc.Lo ^= in8 + in7
 
 				} // 96
@@ -111,9 +112,9 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 				in6, in5 := readU64(p, ui(l)-6*8), readU64(p, ui(l)-5*8)
 				i4, i5 := readU64(p, 4*8), readU64(p, 5*8)
 
-				acc.Hi += mulFold64(in6^(key64_080+seed), in5^(key64_088-seed))
+				acc.Hi += mulFold64(in6^(midKey(k, 80, key64_080)+seed), in5^(midKey(k, 88, key64_088)-seed))
 				acc.Hi ^= i4 + i5
-				acc.Lo += mulFold64(i4^(key64_064+seed), i5^(key64_072-seed))
+				acc.Lo += mulFold64(i4^(midKey(k, 64, key64_064)+seed), i5^(midKey(k, 72, key64_072)-seed))
 				acc.Lo ^= in6 + in5
 
 			} // 64
@@ -121,9 +122,9 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 			in4, in3 := readU64(p, ui(l)-4*8), readU64(p, ui(l)-3*8)
 			i2, i3 := readU64(p, 2*8), readU64(p, 3*8)
 
-			acc.Hi += mulFold64(in4^(key64_048+seed), in3^(key64_056-seed))
+			acc.Hi += mulFold64(in4^(midKey(k, 48, key64_048)+seed), in3^(midKey(k, 56, key64_056)-seed))
 			acc.Hi ^= i2 + i3
-			acc.Lo += mulFold64(i2^(key64_032+seed), i3^(key64_040-seed))
+			acc.Lo += mulFold64(i2^(midKey(k, 32, key64_032)+seed), i3^(midKey(k, 40, key64_040)-seed))
 			acc.Lo ^= in4 + in3
 
 		} // 32
@@ -131,9 +132,9 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 		in2, in1 := readU64(p, ui(l)-2*8), readU64(p, ui(l)-1*8)
 		i0, i1 := readU64(p, 0*8), readU64(p, 1*8)
 
-		acc.Hi += mulFold64(in2^(key64_016+seed), in1^(key64_024-seed))
+		acc.Hi += mulFold64(in2^(midKey(k, 16, key64_016)+seed), in1^(midKey(k, 24, key64_024)-seed))
 		acc.Hi ^= i0 + i1
-		acc.Lo += mulFold64(i0^(key64_000+seed), i1^(key64_008-seed))
+		acc.Lo += mulFold64(i0^(midKey(k, 0, key64_000)+seed), i1^(midKey(k, 8, key64_008)-seed))
 		acc.Lo ^= in2 + in1
 
 		acc.Hi, acc.Lo = (acc.Lo*prime64_1)+(acc.Hi*prime64_4)+((u64(l)-seed)*prime64_2), acc.Hi+acc.Lo
@@ -145,40 +146,41 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 
 	case l <= 240:
 		acc.Lo = u64(l) * prime64_1
+		k := key
 
 		{
 			i0, i1, i2, i3 := readU64(p, 0*8), readU64(p, 1*8), readU64(p, 2*8), readU64(p, 3*8)
 
-			acc.Hi += mulFold64(i2^(key64_016+seed), i3^(key64_024-seed))
+			acc.Hi += mulFold64(i2^(midKey(k, 16, key64_016)+seed), i3^(midKey(k, 24, key64_024)-seed))
 			acc.Hi ^= i0 + i1
-			acc.Lo += mulFold64(i0^(key64_000+seed), i1^(key64_008-seed))
+			acc.Lo += mulFold64(i0^(midKey(k, 0, key64_000)+seed), i1^(midKey(k, 8, key64_008)-seed))
 			acc.Lo ^= i2 + i3
 		}
 
 		{
 			i0, i1, i2, i3 := readU64(p, 4*8), readU64(p, 5*8), readU64(p, 6*8), readU64(p, 7*8)
 
-			acc.Hi += mulFold64(i2^(key64_048+seed), i3^(key64_056-seed))
+			acc.Hi += mulFold64(i2^(midKey(k, 48, key64_048)+seed), i3^(midKey(k, 56, key64_056)-seed))
 			acc.Hi ^= i0 + i1
-			acc.Lo += mulFold64(i0^(key64_032+seed), i1^(key64_040-seed))
+			acc.Lo += mulFold64(i0^(midKey(k, 32, key64_032)+seed), i1^(midKey(k, 40, key64_040)-seed))
 			acc.Lo ^= i2 + i3
 		}
 
 		{
 			i0, i1, i2, i3 := readU64(p, 8*8), readU64(p, 9*8), readU64(p, 10*8), readU64(p, 11*8)
 
-			acc.Hi += mulFold64(i2^(key64_080+seed), i3^(key64_088-seed))
+			acc.Hi += mulFold64(i2^(midKey(k, 80, key64_080)+seed), i3^(midKey(k, 88, key64_088)-seed))
 			acc.Hi ^= i0 + i1
-			acc.Lo += mulFold64(i0^(key64_064+seed), i1^(key64_072-seed))
+			acc.Lo += mulFold64(i0^(midKey(k, 64, key64_064)+seed), i1^(midKey(k, 72, key64_072)-seed))
 			acc.Lo ^= i2 + i3
 		}
 
 		{
 			i0, i1, i2, i3 := readU64(p, 12*8), readU64(p, 13*8), readU64(p, 14*8), readU64(p, 15*8)
 
-			acc.Hi += mulFold64(i2^(key64_112+seed), i3^(key64_120-seed))
+			acc.Hi += mulFold64(i2^(midKey(k, 112, key64_112)+seed), i3^(midKey(k, 120, key64_120)-seed))
 			acc.Hi ^= i0 + i1
-			acc.Lo += mulFold64(i0^(key64_096+seed), i1^(key64_104-seed))
+			acc.Lo += mulFold64(i0^(midKey(k, 96, key64_096)+seed), i1^(midKey(k, 104, key64_104)-seed))
 			acc.Lo ^= i2 + i3
 		}
 
@@ -190,7 +192,7 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 		top := ui(l) &^ 31
 		for i := ui(4 * 32); i < top; i += 32 {
 			i0, i1, i2, i3 := readU64(p, i+0), readU64(p, i+8), readU64(p, i+16), readU64(p, i+24)
-			k0, k1, k2, k3 := readU64(key, i-125)+seed, readU64(key, i-117)-seed, readU64(key, i-109)+seed, readU64(key, i-101)-seed
+			k0, k1, k2, k3 := readU64(k, i-125)+seed, readU64(k, i-117)-seed, readU64(k, i-109)+seed, readU64(k, i-101)-seed
 
 			acc.Hi += mulFold64(i2^k2, i3^k3)
 			acc.Hi ^= i0 + i1
@@ -203,9 +205,9 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 			i0, i1, i2, i3 := readU64(p, ui(l)-32), readU64(p, ui(l)-24), readU64(p, ui(l)-16), readU64(p, ui(l)-8)
 
 			seed := 0 - seed
-			acc.Hi += mulFold64(i0^(key64_119+seed), i1^(key64_127-seed))
+			acc.Hi += mulFold64(i0^(midKey(k, 119, key64_119)+seed), i1^(midKey(k, 127, key64_127)-seed))
 			acc.Hi ^= i2 + i3
-			acc.Lo += mulFold64(i2^(key64_103+seed), i3^(key64_111-seed))
+			acc.Lo += mulFold64(i2^(midKey(k, 103, key64_103)+seed), i3^(midKey(k, 111, key64_111)-seed))
 			acc.Lo ^= i0 + i1
 		}
 

@@ -53,35 +53,37 @@ func hashAny(s str) (acc u64) {
 
 	case l <= 128:
 		acc = u64(l) * prime64_1
+		k := key
 
 		if l > 32 {
 			if l > 64 {
 				if l > 96 {
-					acc += mulFold64(readU64(p, 6*8)^key64_096, readU64(p, 7*8)^key64_104)
-					acc += mulFold64(readU64(p, ui(l)-8*8)^key64_112, readU64(p, ui(l)-7*8)^key64_120)
+					acc += mulFold64(readU64(p, 6*8)^midKey(k, 96, key64_096), readU64(p, 7*8)^midKey(k, 104, key64_104))
+					acc += mulFold64(readU64(p, ui(l)-8*8)^midKey(k, 112, key64_112), readU64(p, ui(l)-7*8)^midKey(k, 120, key64_120))
 				} // 96
-				acc += mulFold64(readU64(p, 4*8)^key64_064, readU64(p, 5*8)^key64_072)
-				acc += mulFold64(readU64(p, ui(l)-6*8)^key64_080, readU64(p, ui(l)-5*8)^key64_088)
+				acc += mulFold64(readU64(p, 4*8)^midKey(k, 64, key64_064), readU64(p, 5*8)^midKey(k, 72, key64_072))
+				acc += mulFold64(readU64(p, ui(l)-6*8)^midKey(k, 80, key64_080), readU64(p, ui(l)-5*8)^midKey(k, 88, key64_088))
 			} // 64
-			acc += mulFold64(readU64(p, 2*8)^key64_032, readU64(p, 3*8)^key64_040)
-			acc += mulFold64(readU64(p, ui(l)-4*8)^key64_048, readU64(p, ui(l)-3*8)^key64_056)
+			acc += mulFold64(readU64(p, 2*8)^midKey(k, 32, key64_032), readU64(p, 3*8)^midKey(k, 40, key64_040))
+			acc += mulFold64(readU64(p, ui(l)-4*8)^midKey(k, 48, key64_048), readU64(p, ui(l)-3*8)^midKey(k, 56, key64_056))
 		} // 32
-		acc += mulFold64(readU64(p, 0*8)^key64_000, readU64(p, 1*8)^key64_008)
-		acc += mulFold64(readU64(p, ui(l)-2*8)^key64_016, readU64(p, ui(l)-1*8)^key64_024)
+		acc += mulFold64(readU64(p, 0*8)^midKey(k, 0, key64_000), readU64(p, 1*8)^midKey(k, 8, key64_008))
+		acc += mulFold64(readU64(p, ui(l)-2*8)^midKey(k, 16, key64_016), readU64(p, ui(l)-1*8)^midKey(k, 24, key64_024))
 
 		return xxh3Avalanche(acc)
 
 	case l <= 240:
 		acc = u64(l) * prime64_1
+		k := key
 
-		acc += mulFold64(readU64(p, 0*16+0)^key64_000, readU64(p, 0*16+8)^key64_008)
-		acc += mulFold64(readU64(p, 1*16+0)^key64_016, readU64(p, 1*16+8)^key64_024)
-		acc += mulFold64(readU64(p, 2*16+0)^key64_032, readU64(p, 2*16+8)^key64_040)
-		acc += mulFold64(readU64(p, 3*16+0)^key64_048, readU64(p, 3*16+8)^key64_056)
-		acc += mulFold64(readU64(p, 4*16+0)^key64_064, readU64(p, 4*16+8)^key64_072)
-		acc += mulFold64(readU64(p, 5*16+0)^key64_080, readU64(p, 5*16+8)^key64_088)
-		acc += mulFold64(readU64(p, 6*16+0)^key64_096, readU64(p, 6*16+8)^key64_104)
-		acc += mulFold64(readU64(p, 7*16+0)^key64_112, readU64(p, 7*16+8)^key64_120)
+		acc += mulFold64(readU64(p, 0*16+0)^midKey(k, 0, key64_000), readU64(p, 0*16+8)^midKey(k, 8, key64_008))
+		acc += mulFold64(readU64(p, 1*16+0)^midKey(k, 16, key64_016), readU64(p, 1*16+8)^midKey(k, 24, key64_024))
+		acc += mulFold64(readU64(p, 2*16+0)^midKey(k, 32, key64_032), readU64(p, 2*16+8)^midKey(k, 40, key64_040))
+		acc += mulFold64(readU64(p, 3*16+0)^midKey(k, 48, key64_048), readU64(p, 3*16+8)^midKey(k, 56, key64_056))
+		acc += mulFold64(readU64(p, 4*16+0)^midKey(k, 64, key64_064), readU64(p, 4*16+8)^midKey(k, 72, key64_072))
+		acc += mulFold64(readU64(p, 5*16+0)^midKey(k, 80, key64_080), readU64(p, 5*16+8)^midKey(k, 88, key64_088))
+		acc += mulFold64(readU64(p, 6*16+0)^midKey(k, 96, key64_096), readU64(p, 6*16+8)^midKey(k, 104, key64_104))
+		acc += mulFold64(readU64(p, 7*16+0)^midKey(k, 112, key64_112), readU64(p, 7*16+8)^midKey(k, 120, key64_120))
 
 		// avalanche
 		acc = xxh3Avalanche(acc)
@@ -89,11 +91,11 @@ func hashAny(s str) (acc u64) {
 		// trailing groups after 128
 		top := ui(l) &^ 15
 		for i := ui(8 * 16); i < top; i += 16 {
-			acc += mulFold64(readU64(p, i+0)^readU64(key, i-125), readU64(p, i+8)^readU64(key, i-117))
+			acc += mulFold64(readU64(p, i+0)^readU64(k, i-125), readU64(p, i+8)^readU64(k, i-117))
 		}
 
 		// last 16 bytes
-		acc += mulFold64(readU64(p, ui(l)-16)^key64_119, readU64(p, ui(l)-8)^key64_127)
+		acc += mulFold64(readU64(p, ui(l)-16)^midKey(k, 119, key64_119), readU64(p, ui(l)-8)^midKey(k, 127, key64_127))
 
 		return xxh3Avalanche(acc)
 

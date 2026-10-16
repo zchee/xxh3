@@ -1,7 +1,6 @@
 package xxh3
 
 import (
-	"encoding/binary"
 	"math/bits"
 	"unsafe"
 )
@@ -48,12 +47,13 @@ func readU16(p ptr, o ui) uint16 {
 
 func readU32(p ptr, o ui) uint32 {
 	b := (*[4]byte)(unsafe.Add(p, o))
-	return binary.LittleEndian.Uint32(b[:])
+	return uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
 }
 
 func readU64(p ptr, o ui) uint64 {
 	b := (*[8]byte)(unsafe.Add(p, o))
-	return binary.LittleEndian.Uint64(b[:])
+	return uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24 |
+		uint64(b[4])<<32 | uint64(b[5])<<40 | uint64(b[6])<<48 | uint64(b[7])<<56
 }
 
 func writeU64(p ptr, o ui, v u64) {
