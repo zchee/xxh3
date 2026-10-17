@@ -53,8 +53,3 @@ func accumBlocksNEON(acc *[8]u64, data, key unsafe.Pointer, n u64)
 func accumBlocksAVX2(acc *[8]u64, data, key unsafe.Pointer, n u64)   { panic("unreachable") }
 func accumBlocksAVX512(acc *[8]u64, data, key unsafe.Pointer, n u64) { panic("unreachable") }
 func accumBlocksSSE(acc *[8]u64, data, key unsafe.Pointer, n u64)    { panic("unreachable") }
-
-func withAVX512(cb func())  { cb() }
-func withAVX2(cb func())    { cb() }
-func withSSE2(cb func())    { cb() }
-func withGeneric(cb func()) { cb() }
