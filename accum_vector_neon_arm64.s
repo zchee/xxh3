@@ -83,103 +83,103 @@
 // Share the one-shot body between incoming-state and constant-state entries.
 // Distinct labels keep both expansions local to their assembly function.
 #define ACCUM_BODY(LARGE, TAIL, LOOP, FINAL, DONE) \
-	CMP $1024, R3; \
-	BLE TAIL; \
-	/* Only full blocks need scramble constants. */ \
-	MOVW $0x9e3779b1, R4; \
-	VDUP R4, V0.S4; \
-	VSHL $32, V0.D2, V31.D2; \
-	ADD $8, R2, R8; \
-LARGE: \
-	/* Stripe zero starts raw sums; stripe one starts odd products. */ \
-	FLDPQ (R1), (F21, F22); \
-	FLDPQ 32(R1), (F23, F24); \
-	FLDPQ (R2), (F5, F6); \
-	FLDPQ 32(R2), (F7, F8); \
-	EORUZP(V21, V22, V23, V24); \
-	MLA(1, 2, 3, 4); \
-	LOADS(64, R8, 0); \
-	DSUM; \
-	EORUZP(V16, V17, V18, V19); \
-	MUL4(11, 12, 13, 14); \
-	STRIPE_EVEN(128, R2, 16); \
-	STRIPE_ODD(192, R8, 16); \
-	STRIPE_EVEN(256, R2, 32); \
-	STRIPE_ODD(320, R8, 32); \
-	STRIPE_EVEN(384, R2, 48); \
-	STRIPE_ODD(448, R8, 48); \
-	STRIPE_EVEN(512, R2, 64); \
-	STRIPE_ODD(576, R8, 64); \
-	STRIPE_EVEN(640, R2, 80); \
-	STRIPE_ODD(704, R8, 80); \
-	STRIPE_EVEN(768, R2, 96); \
-	STRIPE_ODD(832, R8, 96); \
-	STRIPE_EVEN(896, R2, 112); \
-	STRIPE_ODD(960, R8, 112); \
+	CMP     $1024, R3;                                                      \
+	BLE     TAIL;                                                           \
+	/* Only full blocks need scramble constants. */                         \
+	MOVW    $0x9e3779b1, R4;                                                \
+	VDUP    R4, V0.S4;                                                      \
+	VSHL    $32, V0.D2, V31.D2;                                             \
+	ADD     $8, R2, R8;                                                     \
+	LARGE:                                                                  \
+	/* Stripe zero starts raw sums; stripe one starts odd products. */      \
+	FLDPQ   (R1), (F21, F22);                                               \
+	FLDPQ   32(R1), (F23, F24);                                             \
+	FLDPQ   (R2), (F5, F6);                                                 \
+	FLDPQ   32(R2), (F7, F8);                                               \
+	EORUZP(V21, V22, V23, V24);                                             \
+	MLA(1, 2, 3, 4);                                                        \
+	LOADS(64, R8, 0);                                                       \
+	DSUM;                                                                   \
+	EORUZP(V16, V17, V18, V19);                                             \
+	MUL4(11, 12, 13, 14);                                                   \
+	STRIPE_EVEN(128, R2, 16);                                               \
+	STRIPE_ODD(192, R8, 16);                                                \
+	STRIPE_EVEN(256, R2, 32);                                               \
+	STRIPE_ODD(320, R8, 32);                                                \
+	STRIPE_EVEN(384, R2, 48);                                               \
+	STRIPE_ODD(448, R8, 48);                                                \
+	STRIPE_EVEN(512, R2, 64);                                               \
+	STRIPE_ODD(576, R8, 64);                                                \
+	STRIPE_EVEN(640, R2, 80);                                               \
+	STRIPE_ODD(704, R8, 80);                                                \
+	STRIPE_EVEN(768, R2, 96);                                               \
+	STRIPE_ODD(832, R8, 96);                                                \
+	STRIPE_EVEN(896, R2, 112);                                              \
+	STRIPE_ODD(960, R8, 112);                                               \
 	/* Flush deferred data and odd products before nonlinear scrambling. */ \
-	FOLD(V1, V11, V21); \
-	FOLD(V2, V12, V22); \
-	FOLD(V3, V13, V23); \
-	FOLD(V4, V14, V24); \
-	FLDPQ 128(R2), (F5, F6); \
-	FLDPQ 160(R2), (F7, F8); \
-	SCR(V1, 1, V5); \
-	SCR(V2, 2, V6); \
-	SCR(V3, 3, V7); \
-	SCR(V4, 4, V8); \
-	ADD $1024, R1, R1; \
-	SUB $1024, R3, R3; \
-	CMP $1024, R3; \
-	BGT LARGE; \
-	/* Keep short-input setup and the repeated tail stripe aligned. */ \
-	PCALIGN $16; \
-TAIL: \
-	CBZ R3, DONE; \
-	/* Preserve the overlapping last-stripe address as R1 advances. */ \
-	SUB $1, R3, R6; \
-	LSR $6, R6, R6; \
-	ADD R3, R1, R7; \
-	SUB $64, R7, R7; \
-	MOVD R2, R5; \
-	VEOR V21.B16, V21.B16, V21.B16; \
-	VEOR V22.B16, V22.B16, V22.B16; \
-	VEOR V23.B16, V23.B16, V23.B16; \
-	VEOR V24.B16, V24.B16, V24.B16; \
-	CBZ R6, FINAL; \
-	PCALIGN $16; \
-LOOP: \
-	/* Load the upper pair before post-indexing past this stripe. */ \
-	FLDPQ 32(R1), (F18, F19); \
-	FLDPQ.P 64(R1), (F16, F17); \
-	FLDPQ (R5), (F5, F6); \
-	FLDPQ 32(R5), (F7, F8); \
-	ADD $8, R5, R5; \
-	DSUM; \
-	EORUZP(V16, V17, V18, V19); \
-	MLA(1, 2, 3, 4); \
-	SUBS $1, R6, R6; \
-	BNE LOOP; \
-FINAL: \
-	/* The last stripe uses key offset 121, not the next regular key. */ \
-	ADD $121, R2, R5; \
-	FLDPQ (R7), (F16, F17); \
-	FLDPQ 32(R7), (F18, F19); \
-	FLDPQ (R5), (F5, F6); \
-	FLDPQ 32(R5), (F7, F8); \
-	DSUM; \
-	EORUZP(V16, V17, V18, V19); \
-	MLA(1, 2, 3, 4); \
-	/* Fold swapped raw data once, including the last stripe. */ \
-	VEXT $8, V21.B16, V21.B16, V21.B16; \
-	VADD V21.D2, V1.D2, V1.D2; \
-	VEXT $8, V22.B16, V22.B16, V22.B16; \
-	VADD V22.D2, V2.D2, V2.D2; \
-	VEXT $8, V23.B16, V23.B16, V23.B16; \
-	VADD V23.D2, V3.D2, V3.D2; \
-	VEXT $8, V24.B16, V24.B16, V24.B16; \
-	VADD V24.D2, V4.D2, V4.D2; \
-DONE: \
-	VST1 [V1.D2, V2.D2, V3.D2, V4.D2], (R0); \
+	FOLD(V1, V11, V21);                                                     \
+	FOLD(V2, V12, V22);                                                     \
+	FOLD(V3, V13, V23);                                                     \
+	FOLD(V4, V14, V24);                                                     \
+	FLDPQ   128(R2), (F5, F6);                                              \
+	FLDPQ   160(R2), (F7, F8);                                              \
+	SCR(V1, 1, V5);                                                         \
+	SCR(V2, 2, V6);                                                         \
+	SCR(V3, 3, V7);                                                         \
+	SCR(V4, 4, V8);                                                         \
+	ADD     $1024, R1, R1;                                                  \
+	SUB     $1024, R3, R3;                                                  \
+	CMP     $1024, R3;                                                      \
+	BGT     LARGE;                                                          \
+	/* Keep short-input setup and the repeated tail stripe aligned. */      \
+	PCALIGN $16;                                                            \
+	TAIL:                                                                   \
+	CBZ     R3, DONE;                                                       \
+	/* Preserve the overlapping last-stripe address as R1 advances. */      \
+	SUB     $1, R3, R6;                                                     \
+	LSR     $6, R6, R6;                                                     \
+	ADD     R3, R1, R7;                                                     \
+	SUB     $64, R7, R7;                                                    \
+	MOVD    R2, R5;                                                         \
+	VEOR    V21.B16, V21.B16, V21.B16;                                      \
+	VEOR    V22.B16, V22.B16, V22.B16;                                      \
+	VEOR    V23.B16, V23.B16, V23.B16;                                      \
+	VEOR    V24.B16, V24.B16, V24.B16;                                      \
+	CBZ     R6, FINAL;                                                      \
+	PCALIGN $16;                                                            \
+	LOOP:                                                                   \
+	/* Load the upper pair before post-indexing past this stripe. */        \
+	FLDPQ   32(R1), (F18, F19);                                             \
+	FLDPQ.P 64(R1), (F16, F17);                                             \
+	FLDPQ   (R5), (F5, F6);                                                 \
+	FLDPQ   32(R5), (F7, F8);                                               \
+	ADD     $8, R5, R5;                                                     \
+	DSUM;                                                                   \
+	EORUZP(V16, V17, V18, V19);                                             \
+	MLA(1, 2, 3, 4);                                                        \
+	SUBS    $1, R6, R6;                                                     \
+	BNE     LOOP;                                                           \
+	FINAL:                                                                  \
+	/* The last stripe uses key offset 121, not the next regular key. */    \
+	ADD     $121, R2, R5;                                                   \
+	FLDPQ   (R7), (F16, F17);                                               \
+	FLDPQ   32(R7), (F18, F19);                                             \
+	FLDPQ   (R5), (F5, F6);                                                 \
+	FLDPQ   32(R5), (F7, F8);                                               \
+	DSUM;                                                                   \
+	EORUZP(V16, V17, V18, V19);                                             \
+	MLA(1, 2, 3, 4);                                                        \
+	/* Fold swapped raw data once, including the last stripe. */            \
+	VEXT    $8, V21.B16, V21.B16, V21.B16;                                  \
+	VADD    V21.D2, V1.D2, V1.D2;                                           \
+	VEXT    $8, V22.B16, V22.B16, V22.B16;                                  \
+	VADD    V22.D2, V2.D2, V2.D2;                                           \
+	VEXT    $8, V23.B16, V23.B16, V23.B16;                                  \
+	VADD    V23.D2, V3.D2, V3.D2;                                           \
+	VEXT    $8, V24.B16, V24.B16, V24.B16;                                  \
+	VADD    V24.D2, V4.D2, V4.D2;                                           \
+	DONE:                                                                   \
+	VST1    [V1.D2, V2.D2, V3.D2, V4.D2], (R0);                             \
 	RET
 
 // func accumNEON(acc *[8]uint64, data *byte, key *byte, len uint64)
@@ -225,7 +225,7 @@ TEXT ·accumBlockNEON(SB), NOSPLIT, $0-24
 	MOVW $0x9e3779b1, R4
 	VDUP R4, V0.S4
 	VSHL $32, V0.D2, V31.D2
-	ADD $8, R2, R8 // Odd stripes use encodable aligned key offsets.
+	ADD  $8, R2, R8         // Odd stripes use encodable aligned key offsets.
 
 	// Stripe zero initialises the raw sums, retaining incoming accumulators.
 	FLDPQ (R1), (F21, F22)
@@ -278,12 +278,12 @@ TEXT ·accumBlocksNEON(SB), NOSPLIT, $0-32
 	MOVD data+8(FP), R1
 	MOVD key+16(FP), R2
 	MOVD n+24(FP), R3
-	CBZ R3, blocks_done // Zero blocks must not read input or change the state.
+	CBZ  R3, blocks_done                    // Zero blocks must not read input or change the state.
 	VLD1 (R0), [V1.D2, V2.D2, V3.D2, V4.D2]
 	MOVW $0x9e3779b1, R4
 	VDUP R4, V0.S4
 	VSHL $32, V0.D2, V31.D2
-	ADD $8, R2, R8 // Odd-stripe key offsets stay pair-load encodable.
+	ADD  $8, R2, R8                         // Odd-stripe key offsets stay pair-load encodable.
 
 blocks_loop:
 	// Start raw sums and the odd product chain afresh after every scramble.
@@ -324,10 +324,11 @@ blocks_loop:
 	SCR(V2, 2, V6)
 	SCR(V3, 3, V7)
 	SCR(V4, 4, V8)
-	ADD $1024, R1, R1
-	SUBS $1, R3, R3
-	BNE blocks_loop
-	VST1 [V1.D2, V2.D2, V3.D2, V4.D2], (R0)
+	ADD   $1024, R1, R1
+	SUBS  $1, R3, R3
+	BNE   blocks_loop
+	VST1  [V1.D2, V2.D2, V3.D2, V4.D2], (R0)
+
 blocks_done:
 	RET
 
@@ -336,22 +337,22 @@ TEXT ·initSecretNEON(SB), NOSPLIT, $0-24
 	MOVD secret+0(FP), R0
 	MOVD key+8(FP), R1
 	MOVD seed+16(FP), R2
-	NEG R2, R3
+	NEG  R2, R3
 	VDUP R2, V0.D2
 	VMOV R3, V0.D[1]
 
 	VLD1.P 64(R1), [V1.D2, V2.D2, V3.D2, V4.D2]
-	VADD V0.D2, V1.D2, V1.D2
-	VADD V0.D2, V2.D2, V2.D2
-	VADD V0.D2, V3.D2, V3.D2
-	VADD V0.D2, V4.D2, V4.D2
+	VADD   V0.D2, V1.D2, V1.D2
+	VADD   V0.D2, V2.D2, V2.D2
+	VADD   V0.D2, V3.D2, V3.D2
+	VADD   V0.D2, V4.D2, V4.D2
 	VST1.P [V1.D2, V2.D2, V3.D2, V4.D2], 64(R0)
 
 	VLD1.P 64(R1), [V1.D2, V2.D2, V3.D2, V4.D2]
-	VADD V0.D2, V1.D2, V1.D2
-	VADD V0.D2, V2.D2, V2.D2
-	VADD V0.D2, V3.D2, V3.D2
-	VADD V0.D2, V4.D2, V4.D2
+	VADD   V0.D2, V1.D2, V1.D2
+	VADD   V0.D2, V2.D2, V2.D2
+	VADD   V0.D2, V3.D2, V3.D2
+	VADD   V0.D2, V4.D2, V4.D2
 	VST1.P [V1.D2, V2.D2, V3.D2, V4.D2], 64(R0)
 
 	VLD1 (R1), [V1.D2, V2.D2, V3.D2, V4.D2]
