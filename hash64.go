@@ -122,10 +122,11 @@ func hashAny(s str) (acc u64) {
 		}
 
 		// merge accs
-		acc += mulFold64(accs[0]^key64_011, accs[1]^key64_019)
-		acc += mulFold64(accs[2]^key64_027, accs[3]^key64_035)
-		acc += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
-		acc += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
+		k := key
+		acc += mulFold64(accs[0]^midKey(k, 11, key64_011), accs[1]^midKey(k, 19, key64_019))
+		acc += mulFold64(accs[2]^midKey(k, 27, key64_027), accs[3]^midKey(k, 35, key64_035))
+		acc += mulFold64(accs[4]^midKey(k, 43, key64_043), accs[5]^midKey(k, 51, key64_051))
+		acc += mulFold64(accs[6]^midKey(k, 59, key64_059), accs[7]^midKey(k, 67, key64_067))
 
 		return xxh3Avalanche(acc)
 	}
