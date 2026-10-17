@@ -24,16 +24,23 @@ func TestAccumFromParity(t *testing.T) {
 						initSecret(ptr(&secret), tc.seed)
 						k = ptr(&secret)
 					}
-					for tail := 65; tail <= 1088; tail++ {
-						src := [8]u64{1, 3, 5, 7, 11, 13, 17, 19}
-						before := src
-						want := src
-						accumScalar(&want, ptr(&data[0]), k, u64(tail))
-						got := [8]u64{23, 29, 31, 37, 41, 43, 47, 53}
-						tt.accum(&got, &src, ptr(&data[0]), k, u64(tail))
-						if got != want || src != before {
-							t.Fatalf("tail %d: got %x, want %x, source changed=%t", tail, got, want, src != before)
-						}
+					for name, input := range map[string]struct{ offset int }{
+						"aligned": {0}, "offset-1": {1}, "offset-7": {7}, "offset-31": {31}, "offset-63": {63},
+					} {
+						t.Run(name, func(t *testing.T) {
+							for tail := 65; tail <= 1088; tail++ {
+								src := [8]u64{1, 3, 5, 7, 11, 13, 17, 19}
+								before := src
+								want := src
+								p := ptr(&data[input.offset])
+								accumScalar(&want, p, k, u64(tail))
+								got := [8]u64{23, 29, 31, 37, 41, 43, 47, 53}
+								tt.accum(&got, &src, p, k, u64(tail))
+								if got != want || src != before {
+									t.Fatalf("tail %d offset %d: got %x, want %x, source changed=%t", tail, input.offset, got, want, src != before)
+								}
+							}
+						})
 					}
 				})
 			}

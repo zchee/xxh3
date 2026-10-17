@@ -168,7 +168,6 @@ func TestHasherCompatSeed(t *testing.T) {
 
 			if exp, got := HashSeed(buf[:n], seed), h.Sum64(); exp != got {
 				t.Fatalf("Sum64: % -4d: %016x != %016x, seed:%x", n, exp, got, seed)
-				return
 			}
 			if exp, got := Hash128Seed(buf[:n], seed), h.Sum128(); exp != got {
 				t.Errorf("Sum128: % -4d: %016x != %016x", n, exp, got)
