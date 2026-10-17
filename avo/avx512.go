@@ -22,8 +22,12 @@ func AVX512() {
 		DATA(i*8, U64(v))
 	}
 
-	oneShot := func(name string, initFromTable bool) {
-		TEXT(name, NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
+	oneShot := func(name string, initFromTable, separateSource bool) {
+		signature := "func(acc *[8]uint64, data, key *byte, len uint64)"
+		if separateSource {
+			signature = "func(acc, src *[8]uint64, data, key *byte, len uint64)"
+		}
+		TEXT(name, NOSPLIT, signature)
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
 		data := Mem{Base: Load(Param("data"), GP64())}
@@ -41,6 +45,8 @@ func AVX512() {
 			if initFromTable {
 				// Avoid forwarding narrow Go stores into wide vector loads.
 				source = initData
+			} else if separateSource {
+				source = Mem{Base: Load(Param("src"), GP64())}
 			}
 			VMOVDQU64(source.Offset(0x00), a[0])
 			VMOVDQU64(primeData, prime)
@@ -198,9 +204,10 @@ func AVX512() {
 		}
 	}
 
-	oneShot("accumAVX512", false)
+	oneShot("accumAVX512", false, false)
 	block("accumBlockAVX512", false, false)
-	oneShot("accumAVX512Init", true)
+	oneShot("accumAVX512Init", true, false)
+	oneShot("accumAVX512From", false, true)
 	block("accumBlockAVX512Init", true, false)
 	block("accumBlocksAVX512", false, true)
 	Generate()

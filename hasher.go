@@ -244,18 +244,19 @@ func (h *Hasher) Sum64() uint64 {
 
 	l := h.blk*_block + h.len
 	acc := l * prime64_1
-	accs := h.acc
-
-	if h.len > 0 {
-		// We are only ever doing 1 block here, so no avx512.
-		if hasAVX2 {
-			accumAVX2(&accs, ptr(&h.buf[0]), h.key, h.len)
-		} else if hasSSE2 {
-			accumSSE(&accs, ptr(&h.buf[0]), h.key, h.len)
-		} else if hasNEON {
-			accumNEON(&accs, ptr(&h.buf[0]), h.key, h.len)
-		} else {
-			accumScalar(&accs, ptr(&h.buf[0]), h.key, h.len)
+	var accs [8]u64
+	if h.len > 0 && hasAVX2 {
+		accumAVX2From(&accs, &h.acc, ptr(&h.buf[0]), h.key, h.len)
+	} else {
+		accs = h.acc
+		if h.len > 0 {
+			if hasSSE2 {
+				accumSSE(&accs, ptr(&h.buf[0]), h.key, h.len)
+			} else if hasNEON {
+				accumNEON(&accs, ptr(&h.buf[0]), h.key, h.len)
+			} else {
+				accumScalar(&accs, ptr(&h.buf[0]), h.key, h.len)
+			}
 		}
 	}
 
@@ -296,18 +297,19 @@ func (h *Hasher) Sum128() Uint128 {
 
 	l := h.blk*_block + h.len
 	acc := Uint128{Lo: l * prime64_1, Hi: ^(l * prime64_2)}
-	accs := h.acc
-
-	if h.len > 0 {
-		// We are only ever doing 1 block here, so no avx512.
-		if hasAVX2 {
-			accumAVX2(&accs, ptr(&h.buf[0]), h.key, h.len)
-		} else if hasSSE2 {
-			accumSSE(&accs, ptr(&h.buf[0]), h.key, h.len)
-		} else if hasNEON {
-			accumNEON(&accs, ptr(&h.buf[0]), h.key, h.len)
-		} else {
-			accumScalar(&accs, ptr(&h.buf[0]), h.key, h.len)
+	var accs [8]u64
+	if h.len > 0 && hasAVX2 {
+		accumAVX2From(&accs, &h.acc, ptr(&h.buf[0]), h.key, h.len)
+	} else {
+		accs = h.acc
+		if h.len > 0 {
+			if hasSSE2 {
+				accumSSE(&accs, ptr(&h.buf[0]), h.key, h.len)
+			} else if hasNEON {
+				accumNEON(&accs, ptr(&h.buf[0]), h.key, h.len)
+			} else {
+				accumScalar(&accs, ptr(&h.buf[0]), h.key, h.len)
+			}
 		}
 	}
 

@@ -27,6 +27,18 @@ func accumAVX2(acc *[8]u64, data, key unsafe.Pointer, len u64)
 //go:noescape
 func accumAVX512(acc *[8]u64, data, key unsafe.Pointer, len u64)
 
+// accumAVX2From reads src and writes the accumulated tail to acc.
+// The tail is 65..1088 bytes and acc must not alias src.
+//
+//go:noescape
+func accumAVX2From(acc, src *[8]u64, data, key unsafe.Pointer, len u64)
+
+// accumAVX512From reads src and writes the accumulated tail to acc.
+// The tail is 65..1088 bytes and acc must not alias src.
+//
+//go:noescape
+func accumAVX512From(acc, src *[8]u64, data, key unsafe.Pointer, len u64)
+
 //go:noescape
 func accumSSE(acc *[8]u64, data, key unsafe.Pointer, len u64)
 

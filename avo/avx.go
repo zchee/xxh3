@@ -21,12 +21,16 @@ func AVX() {
 		DATA(i*8, U64(v))
 	}
 
-	oneShot := func(name string, initFromTable bool) {
+	oneShot := func(name string, initFromTable, separateSource bool) {
 		// loadEarly will fill up remaining registers with key values.
 		// This can reduce L1 fetch pressure.
 		const loadEarly = true
 
-		TEXT(name, NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
+		signature := "func(acc *[8]uint64, data, key *byte, len uint64)"
+		if separateSource {
+			signature = "func(acc, src *[8]uint64, data, key *byte, len uint64)"
+		}
+		TEXT(name, NOSPLIT, signature)
 		// %rdi, %rsi, %rdx, %rcx
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
@@ -54,6 +58,8 @@ func AVX() {
 			if initFromTable {
 				// Avoid forwarding narrow Go stores into wide vector loads.
 				source = initData
+			} else if separateSource {
+				source = Mem{Base: Load(Param("src"), GP64())}
 			}
 			VMOVDQU(source.Offset(0x00), a[0][0])
 			VMOVDQU(source.Offset(0x20), a[0][1])
@@ -223,9 +229,10 @@ func AVX() {
 		}
 	}
 
-	oneShot("accumAVX2", false)
+	oneShot("accumAVX2", false, false)
 	block("accumBlockAVX2", false, false)
-	oneShot("accumAVX2Init", true)
+	oneShot("accumAVX2Init", true, false)
+	oneShot("accumAVX2From", false, true)
 	block("accumBlockAVX2Init", true, false)
 	block("accumBlocksAVX2", false, true)
 	Generate()
