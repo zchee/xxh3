@@ -97,43 +97,31 @@ func hashAny128(s str) (acc u128) {
 		if l > 32 {
 			if l > 64 {
 				if l > 96 {
-					in8, in7 := readU64(p, ui(l)-8*8), readU64(p, ui(l)-7*8)
-					i6, i7 := readU64(p, 6*8), readU64(p, 7*8)
-
-					acc.Hi += mulFold64(in8^midKey(k, 112, key64_112), in7^midKey(k, 120, key64_120))
-					acc.Hi ^= i6 + i7
-					acc.Lo += mulFold64(i6^midKey(k, 96, key64_096), i7^midKey(k, 104, key64_104))
-					acc.Lo ^= in8 + in7
+					acc.Hi += mulFold64(readU64(p, ui(l)-8*8)^midKey(k, 112, key64_112), readU64(p, ui(l)-7*8)^midKey(k, 120, key64_120))
+					acc.Hi ^= readU64(p, 6*8) + readU64(p, 7*8)
+					acc.Lo += mulFold64(readU64(p, 6*8)^midKey(k, 96, key64_096), readU64(p, 7*8)^midKey(k, 104, key64_104))
+					acc.Lo ^= readU64(p, ui(l)-8*8) + readU64(p, ui(l)-7*8)
 
 				} // 96
 
-				in6, in5 := readU64(p, ui(l)-6*8), readU64(p, ui(l)-5*8)
-				i4, i5 := readU64(p, 4*8), readU64(p, 5*8)
-
-				acc.Hi += mulFold64(in6^midKey(k, 80, key64_080), in5^midKey(k, 88, key64_088))
-				acc.Hi ^= i4 + i5
-				acc.Lo += mulFold64(i4^midKey(k, 64, key64_064), i5^midKey(k, 72, key64_072))
-				acc.Lo ^= in6 + in5
+				acc.Hi += mulFold64(readU64(p, ui(l)-6*8)^midKey(k, 80, key64_080), readU64(p, ui(l)-5*8)^midKey(k, 88, key64_088))
+				acc.Hi ^= readU64(p, 4*8) + readU64(p, 5*8)
+				acc.Lo += mulFold64(readU64(p, 4*8)^midKey(k, 64, key64_064), readU64(p, 5*8)^midKey(k, 72, key64_072))
+				acc.Lo ^= readU64(p, ui(l)-6*8) + readU64(p, ui(l)-5*8)
 
 			} // 64
 
-			in4, in3 := readU64(p, ui(l)-4*8), readU64(p, ui(l)-3*8)
-			i2, i3 := readU64(p, 2*8), readU64(p, 3*8)
-
-			acc.Hi += mulFold64(in4^midKey(k, 48, key64_048), in3^midKey(k, 56, key64_056))
-			acc.Hi ^= i2 + i3
-			acc.Lo += mulFold64(i2^midKey(k, 32, key64_032), i3^midKey(k, 40, key64_040))
-			acc.Lo ^= in4 + in3
+			acc.Hi += mulFold64(readU64(p, ui(l)-4*8)^midKey(k, 48, key64_048), readU64(p, ui(l)-3*8)^midKey(k, 56, key64_056))
+			acc.Hi ^= readU64(p, 2*8) + readU64(p, 3*8)
+			acc.Lo += mulFold64(readU64(p, 2*8)^midKey(k, 32, key64_032), readU64(p, 3*8)^midKey(k, 40, key64_040))
+			acc.Lo ^= readU64(p, ui(l)-4*8) + readU64(p, ui(l)-3*8)
 
 		} // 32
 
-		in2, in1 := readU64(p, ui(l)-2*8), readU64(p, ui(l)-1*8)
-		i0, i1 := readU64(p, 0*8), readU64(p, 1*8)
-
-		acc.Hi += mulFold64(in2^midKey(k, 16, key64_016), in1^midKey(k, 24, key64_024))
-		acc.Hi ^= i0 + i1
-		acc.Lo += mulFold64(i0^midKey(k, 0, key64_000), i1^midKey(k, 8, key64_008))
-		acc.Lo ^= in2 + in1
+		acc.Hi += mulFold64(readU64(p, ui(l)-2*8)^midKey(k, 16, key64_016), readU64(p, ui(l)-1*8)^midKey(k, 24, key64_024))
+		acc.Hi ^= readU64(p, 0*8) + readU64(p, 1*8)
+		acc.Lo += mulFold64(readU64(p, 0*8)^midKey(k, 0, key64_000), readU64(p, 1*8)^midKey(k, 8, key64_008))
+		acc.Lo ^= readU64(p, ui(l)-2*8) + readU64(p, ui(l)-1*8)
 
 		acc.Hi, acc.Lo = (acc.Lo*prime64_1)+(acc.Hi*prime64_4)+(u64(l)*prime64_2), acc.Hi+acc.Lo
 
@@ -146,67 +134,57 @@ func hashAny128(s str) (acc u128) {
 		acc.Lo = u64(l) * prime64_1
 		k := key
 
-		{
-			i0, i1, i2, i3 := readU64(p, 0*8), readU64(p, 1*8), readU64(p, 2*8), readU64(p, 3*8)
+		acc.Hi += mulFold64(readU64(p, 2*8)^midKey(k, 16, key64_016), readU64(p, 3*8)^midKey(k, 24, key64_024))
+		acc.Hi ^= readU64(p, 0*8) + readU64(p, 1*8)
+		acc.Lo += mulFold64(readU64(p, 0*8)^midKey(k, 0, key64_000), readU64(p, 1*8)^midKey(k, 8, key64_008))
+		acc.Lo ^= readU64(p, 2*8) + readU64(p, 3*8)
 
-			acc.Hi += mulFold64(i2^midKey(k, 16, key64_016), i3^midKey(k, 24, key64_024))
-			acc.Hi ^= i0 + i1
-			acc.Lo += mulFold64(i0^midKey(k, 0, key64_000), i1^midKey(k, 8, key64_008))
-			acc.Lo ^= i2 + i3
-		}
+		acc.Hi += mulFold64(readU64(p, 6*8)^midKey(k, 48, key64_048), readU64(p, 7*8)^midKey(k, 56, key64_056))
+		acc.Hi ^= readU64(p, 4*8) + readU64(p, 5*8)
+		acc.Lo += mulFold64(readU64(p, 4*8)^midKey(k, 32, key64_032), readU64(p, 5*8)^midKey(k, 40, key64_040))
+		acc.Lo ^= readU64(p, 6*8) + readU64(p, 7*8)
 
-		{
-			i0, i1, i2, i3 := readU64(p, 4*8), readU64(p, 5*8), readU64(p, 6*8), readU64(p, 7*8)
+		acc.Hi += mulFold64(readU64(p, 10*8)^midKey(k, 80, key64_080), readU64(p, 11*8)^midKey(k, 88, key64_088))
+		acc.Hi ^= readU64(p, 8*8) + readU64(p, 9*8)
+		acc.Lo += mulFold64(readU64(p, 8*8)^midKey(k, 64, key64_064), readU64(p, 9*8)^midKey(k, 72, key64_072))
+		acc.Lo ^= readU64(p, 10*8) + readU64(p, 11*8)
 
-			acc.Hi += mulFold64(i2^midKey(k, 48, key64_048), i3^midKey(k, 56, key64_056))
-			acc.Hi ^= i0 + i1
-			acc.Lo += mulFold64(i0^midKey(k, 32, key64_032), i1^midKey(k, 40, key64_040))
-			acc.Lo ^= i2 + i3
-		}
-
-		{
-			i0, i1, i2, i3 := readU64(p, 8*8), readU64(p, 9*8), readU64(p, 10*8), readU64(p, 11*8)
-
-			acc.Hi += mulFold64(i2^midKey(k, 80, key64_080), i3^midKey(k, 88, key64_088))
-			acc.Hi ^= i0 + i1
-			acc.Lo += mulFold64(i0^midKey(k, 64, key64_064), i1^midKey(k, 72, key64_072))
-			acc.Lo ^= i2 + i3
-		}
-
-		{
-			i0, i1, i2, i3 := readU64(p, 12*8), readU64(p, 13*8), readU64(p, 14*8), readU64(p, 15*8)
-
-			acc.Hi += mulFold64(i2^midKey(k, 112, key64_112), i3^midKey(k, 120, key64_120))
-			acc.Hi ^= i0 + i1
-			acc.Lo += mulFold64(i0^midKey(k, 96, key64_096), i1^midKey(k, 104, key64_104))
-			acc.Lo ^= i2 + i3
-		}
+		acc.Hi += mulFold64(readU64(p, 14*8)^midKey(k, 112, key64_112), readU64(p, 15*8)^midKey(k, 120, key64_120))
+		acc.Hi ^= readU64(p, 12*8) + readU64(p, 13*8)
+		acc.Lo += mulFold64(readU64(p, 12*8)^midKey(k, 96, key64_096), readU64(p, 13*8)^midKey(k, 104, key64_104))
+		acc.Lo ^= readU64(p, 14*8) + readU64(p, 15*8)
 
 		// avalanche
 		acc.Hi = xxh3Avalanche(acc.Hi)
 		acc.Lo = xxh3Avalanche(acc.Lo)
 
 		// trailing groups after 128
-		top := ui(l) &^ 31
-		for i := ui(4 * 32); i < top; i += 32 {
-			i0, i1, i2, i3 := readU64(p, i+0), readU64(p, i+8), readU64(p, i+16), readU64(p, i+24)
-			k0, k1, k2, k3 := readU64(k, i-125), readU64(k, i-117), readU64(k, i-109), readU64(k, i-101)
+		if l >= 160 {
+			acc.Hi += mulFold64(readU64(p, 144)^readU64(k, 19), readU64(p, 152)^readU64(k, 27))
+			acc.Hi ^= readU64(p, 128) + readU64(p, 136)
+			acc.Lo += mulFold64(readU64(p, 128)^readU64(k, 3), readU64(p, 136)^readU64(k, 11))
+			acc.Lo ^= readU64(p, 144) + readU64(p, 152)
 
-			acc.Hi += mulFold64(i2^k2, i3^k3)
-			acc.Hi ^= i0 + i1
-			acc.Lo += mulFold64(i0^k0, i1^k1)
-			acc.Lo ^= i2 + i3
+			if l >= 192 {
+				acc.Hi += mulFold64(readU64(p, 176)^readU64(k, 51), readU64(p, 184)^readU64(k, 59))
+				acc.Hi ^= readU64(p, 160) + readU64(p, 168)
+				acc.Lo += mulFold64(readU64(p, 160)^readU64(k, 35), readU64(p, 168)^readU64(k, 43))
+				acc.Lo ^= readU64(p, 176) + readU64(p, 184)
+
+				if l >= 224 {
+					acc.Hi += mulFold64(readU64(p, 208)^readU64(k, 83), readU64(p, 216)^readU64(k, 91))
+					acc.Hi ^= readU64(p, 192) + readU64(p, 200)
+					acc.Lo += mulFold64(readU64(p, 192)^readU64(k, 67), readU64(p, 200)^readU64(k, 75))
+					acc.Lo ^= readU64(p, 208) + readU64(p, 216)
+				}
+			}
 		}
 
 		// last 32 bytes
-		{
-			i0, i1, i2, i3 := readU64(p, ui(l)-32), readU64(p, ui(l)-24), readU64(p, ui(l)-16), readU64(p, ui(l)-8)
-
-			acc.Hi += mulFold64(i0^midKey(k, 119, key64_119), i1^midKey(k, 127, key64_127))
-			acc.Hi ^= i2 + i3
-			acc.Lo += mulFold64(i2^midKey(k, 103, key64_103), i3^midKey(k, 111, key64_111))
-			acc.Lo ^= i0 + i1
-		}
+		acc.Hi += mulFold64(readU64(p, ui(l)-32)^midKey(k, 119, key64_119), readU64(p, ui(l)-24)^midKey(k, 127, key64_127))
+		acc.Hi ^= readU64(p, ui(l)-16) + readU64(p, ui(l)-8)
+		acc.Lo += mulFold64(readU64(p, ui(l)-16)^midKey(k, 103, key64_103), readU64(p, ui(l)-8)^midKey(k, 111, key64_111))
+		acc.Lo ^= readU64(p, ui(l)-32) + readU64(p, ui(l)-24)
 
 		acc.Hi, acc.Lo = (acc.Lo*prime64_1)+(acc.Hi*prime64_4)+(u64(l)*prime64_2), acc.Hi+acc.Lo
 
