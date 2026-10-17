@@ -15,10 +15,9 @@ func accumScalar(accs *[8]u64, p, secret ptr, l u64) {
 		return
 	}
 	for l > _block {
-		k := secret
-
 		// accs
-		for range 16 {
+		for i := range 16 {
+			p, k := unsafe.Add(p, i*_stripe), unsafe.Add(secret, i*8)
 			{
 				const off = 0
 				dv0 := readU64(p, 8*off)
@@ -80,11 +79,9 @@ func accumScalar(accs *[8]u64, p, secret ptr, l u64) {
 				accs[off+1] += ac1
 			}
 
-			l -= _stripe
-			if l > 0 {
-				p, k = unsafe.Add(p, _stripe), unsafe.Add(k, 8)
-			}
 		}
+		l -= _block
+		p = unsafe.Add(p, _block)
 
 		// scramble accs
 		accs[0] ^= accs[0] >> 47
@@ -121,9 +118,10 @@ func accumScalar(accs *[8]u64, p, secret ptr, l u64) {
 	}
 
 	if l > 0 {
-		t, k := (l-1)/_stripe, secret
+		t := (l - 1) / _stripe
 
-		for range t {
+		for i := range t {
+			p, k := unsafe.Add(p, i*_stripe), unsafe.Add(secret, i*8)
 			{
 				const off = 0
 				dv0 := readU64(p, 8*off)
@@ -185,14 +183,10 @@ func accumScalar(accs *[8]u64, p, secret ptr, l u64) {
 				accs[off+1] += ac1
 			}
 
-			l -= _stripe
-			if l > 0 {
-				p, k = unsafe.Add(p, _stripe), unsafe.Add(k, 8)
-			}
 		}
 
-		if l > 0 {
-			p = ptr(ui(p) - uintptr(_stripe-l))
+		{
+			p := unsafe.Add(p, int(l)-_stripe)
 
 			dv0 := readU64(p, 8*0)
 			dk0 := dv0 ^ key64_121
@@ -243,7 +237,8 @@ func accumBlockScalar(accs *[8]u64, p, secret ptr) {
 		return
 	}
 	// accs
-	for range 16 {
+	for i := range 16 {
+		p, secret := unsafe.Add(p, i*_stripe), unsafe.Add(secret, i*8)
 		{
 			const off = 0
 			dv0 := readU64(p, 8*off)
@@ -304,8 +299,6 @@ func accumBlockScalar(accs *[8]u64, p, secret ptr) {
 			accs[off] += ac0
 			accs[off+1] += ac1
 		}
-
-		p, secret = unsafe.Add(p, _stripe), unsafe.Add(secret, 8)
 	}
 
 	// scramble accs
@@ -345,10 +338,9 @@ func accumBlockScalar(accs *[8]u64, p, secret ptr) {
 // accumScalarSeed should be used with custom key.
 func accumScalarSeed(accs *[8]u64, p, secret ptr, l u64) {
 	for l > _block {
-		k := secret
-
 		// accs
-		for range 16 {
+		for i := range 16 {
+			p, k := unsafe.Add(p, i*_stripe), unsafe.Add(secret, i*8)
 			{
 				const off = 0
 				dv0 := readU64(p, 8*off)
@@ -410,11 +402,9 @@ func accumScalarSeed(accs *[8]u64, p, secret ptr, l u64) {
 				accs[off+1] += ac1
 			}
 
-			l -= _stripe
-			if l > 0 {
-				p, k = unsafe.Add(p, _stripe), unsafe.Add(k, 8)
-			}
 		}
+		l -= _block
+		p = unsafe.Add(p, _block)
 
 		// scramble accs
 		accs[0] ^= accs[0] >> 47
@@ -451,9 +441,10 @@ func accumScalarSeed(accs *[8]u64, p, secret ptr, l u64) {
 	}
 
 	if l > 0 {
-		t, k := (l-1)/_stripe, secret
+		t := (l - 1) / _stripe
 
-		for range t {
+		for i := range t {
+			p, k := unsafe.Add(p, i*_stripe), unsafe.Add(secret, i*8)
 			{
 				const off = 0
 				dv0 := readU64(p, 8*off)
@@ -515,14 +506,10 @@ func accumScalarSeed(accs *[8]u64, p, secret ptr, l u64) {
 				accs[off+1] += ac1
 			}
 
-			l -= _stripe
-			if l > 0 {
-				p, k = unsafe.Add(p, _stripe), unsafe.Add(k, 8)
-			}
 		}
 
-		if l > 0 {
-			p = ptr(ui(p) - uintptr(_stripe-l))
+		{
+			p := unsafe.Add(p, int(l)-_stripe)
 
 			dv0 := readU64(p, 8*0)
 			dk0 := dv0 ^ readU64(secret, 121)
@@ -571,8 +558,8 @@ func accumScalarSeed(accs *[8]u64, p, secret ptr, l u64) {
 func accumBlockScalarSeed(accs *[8]u64, p, secret ptr) {
 	// accs
 	{
-		secret := secret
-		for range 16 {
+		for i := range 16 {
+			p, secret := unsafe.Add(p, i*_stripe), unsafe.Add(secret, i*8)
 			{
 				const off = 0
 				dv0 := readU64(p, 8*off)
@@ -633,8 +620,6 @@ func accumBlockScalarSeed(accs *[8]u64, p, secret ptr) {
 				accs[off] += ac0
 				accs[off+1] += ac1
 			}
-
-			p, secret = unsafe.Add(p, _stripe), unsafe.Add(secret, 8)
 		}
 	}
 
