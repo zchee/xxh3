@@ -86,19 +86,32 @@ func hashAnySeed(s str, seed uint64) (acc u64) {
 		acc += mulFold64(readU64(p, 6*16+0)^(midKey(k, 96, key64_096)+seed), readU64(p, 6*16+8)^(midKey(k, 104, key64_104)-seed))
 		acc += mulFold64(readU64(p, 7*16+0)^(midKey(k, 112, key64_112)+seed), readU64(p, 7*16+8)^(midKey(k, 120, key64_120)-seed))
 
-		// avalanche
-		acc = xxh3Avalanche(acc)
-
-		// trailing groups after 128
-		top := ui(l) &^ 15
-		for i := ui(8 * 16); i < top; i += 16 {
-			acc += mulFold64(readU64(p, i+0)^(readU64(k, i-125)+seed), readU64(p, i+8)^(readU64(k, i-117)-seed))
+		// Keep trailing folds independent of the first accumulator's avalanche.
+		var accEnd u64
+		if l >= 144 {
+			accEnd += mulFold64(readU64(p, 128)^(readU64(k, 3)+seed), readU64(p, 136)^(readU64(k, 11)-seed))
+			if l >= 160 {
+				accEnd += mulFold64(readU64(p, 144)^(readU64(k, 19)+seed), readU64(p, 152)^(readU64(k, 27)-seed))
+				if l >= 176 {
+					accEnd += mulFold64(readU64(p, 160)^(readU64(k, 35)+seed), readU64(p, 168)^(readU64(k, 43)-seed))
+					if l >= 192 {
+						accEnd += mulFold64(readU64(p, 176)^(readU64(k, 51)+seed), readU64(p, 184)^(readU64(k, 59)-seed))
+						if l >= 208 {
+							accEnd += mulFold64(readU64(p, 192)^(readU64(k, 67)+seed), readU64(p, 200)^(readU64(k, 75)-seed))
+							if l >= 224 {
+								accEnd += mulFold64(readU64(p, 208)^(readU64(k, 83)+seed), readU64(p, 216)^(readU64(k, 91)-seed))
+								if l >= 240 {
+									accEnd += mulFold64(readU64(p, 224)^(readU64(k, 99)+seed), readU64(p, 232)^(readU64(k, 107)-seed))
+								}
+							}
+						}
+					}
+				}
+			}
 		}
+		accEnd += mulFold64(readU64(p, ui(l)-16)^(midKey(k, 119, key64_119)+seed), readU64(p, ui(l)-8)^(midKey(k, 127, key64_127)-seed))
 
-		// last 16 bytes
-		acc += mulFold64(readU64(p, ui(l)-16)^(midKey(k, 119, key64_119)+seed), readU64(p, ui(l)-8)^(midKey(k, 127, key64_127)-seed))
-
-		return xxh3Avalanche(acc)
+		return xxh3Avalanche(xxh3Avalanche(acc) + accEnd)
 
 	default:
 		if seed == 0 {
