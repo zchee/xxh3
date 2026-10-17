@@ -9,7 +9,7 @@ func Hash128(b []byte) Uint128 {
 	return hashAny128(*(*str)(ptr(&b)))
 }
 
-// HashString128 returns the 128-bit hash of the string slice.
+// HashString128 returns the 128-bit hash of the string.
 func HashString128(s string) Uint128 {
 	return hashAny128(*(*str)(ptr(&s)))
 }
@@ -154,7 +154,6 @@ func hashAny128(s str) (acc u128) {
 		acc.Lo += mulFold64(readU64(p, 12*8)^midKey(k, 96, key64_096), readU64(p, 13*8)^midKey(k, 104, key64_104))
 		acc.Lo ^= readU64(p, 14*8) + readU64(p, 15*8)
 
-		// avalanche
 		acc.Hi = xxh3Avalanche(acc.Hi)
 		acc.Lo = xxh3Avalanche(acc.Lo)
 
@@ -214,7 +213,6 @@ func hashAny128(s str) (acc u128) {
 			accumScalar(&accs, p, key, u64(l))
 		}
 
-		// merge accs
 		k := key
 		acc.Lo += mulFold64(accs[0]^midKey(k, 11, key64_011), accs[1]^midKey(k, 19, key64_019))
 		acc.Hi += mulFold64(accs[0]^midKey(k, 117, key64_117), accs[1]^midKey(k, 125, key64_125))

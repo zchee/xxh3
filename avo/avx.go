@@ -31,7 +31,6 @@ func AVX() {
 			signature = "func(acc, src *[8]uint64, data, key *byte, len uint64)"
 		}
 		TEXT(name, NOSPLIT, signature)
-		// %rdi, %rsi, %rdx, %rcx
 
 		acc := Mem{Base: Load(Param("acc"), GP64())}
 		data := Mem{Base: Load(Param("data"), GP64())}

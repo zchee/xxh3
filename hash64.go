@@ -7,7 +7,7 @@ func Hash(b []byte) uint64 {
 	return hashAny(*(*str)(ptr(&b)))
 }
 
-// Hash returns the hash of the string slice.
+// HashString returns the hash of the string.
 func HashString(s string) uint64 {
 	return hashAny(*(*str)(ptr(&s)))
 }
@@ -132,7 +132,6 @@ func hashAny(s str) (acc u64) {
 			accumScalar(&accs, p, key, u64(l))
 		}
 
-		// merge accs
 		k := key
 		acc += mulFold64(accs[0]^midKey(k, 11, key64_011), accs[1]^midKey(k, 19, key64_019))
 		acc += mulFold64(accs[2]^midKey(k, 27, key64_027), accs[3]^midKey(k, 35, key64_035))

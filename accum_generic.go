@@ -15,7 +15,6 @@ func accumScalar(accs *[8]u64, p, secret ptr, l u64) {
 		return
 	}
 	for l > _block {
-		// accs
 		for i := range 16 {
 			p, k := unsafe.Add(p, i*_stripe), unsafe.Add(secret, i*8)
 			{
@@ -236,7 +235,6 @@ func accumBlockScalar(accs *[8]u64, p, secret ptr) {
 		accumBlockScalarSeed(accs, p, secret)
 		return
 	}
-	// accs
 	for i := range 16 {
 		p, secret := unsafe.Add(p, i*_stripe), unsafe.Add(secret, i*8)
 		{
@@ -338,7 +336,6 @@ func accumBlockScalar(accs *[8]u64, p, secret ptr) {
 // accumScalarSeed should be used with custom key.
 func accumScalarSeed(accs *[8]u64, p, secret ptr, l u64) {
 	for l > _block {
-		// accs
 		for i := range 16 {
 			p, k := unsafe.Add(p, i*_stripe), unsafe.Add(secret, i*8)
 			{
@@ -556,7 +553,6 @@ func accumScalarSeed(accs *[8]u64, p, secret ptr, l u64) {
 
 // accumBlockScalarSeed should be used with custom key.
 func accumBlockScalarSeed(accs *[8]u64, p, secret ptr) {
-	// accs
 	{
 		for i := range 16 {
 			p, secret := unsafe.Add(p, i*_stripe), unsafe.Add(secret, i*8)

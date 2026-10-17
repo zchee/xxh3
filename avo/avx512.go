@@ -231,7 +231,7 @@ func avx512accum(data Mem, a, raw VecVirtual, doff int, key VecVirtual, prefetch
 	y0, y1, y2 := ZMM(), ZMM(), ZMM()
 	VMOVDQU64(data.Offset(doff+0x00), y0)
 	if prefetch {
-		// Prefetch once per cacheline (64 bytes), 8 iterations ahead.
+		// Prefetch once per cacheline (64 bytes), 1024 bytes (16 stripes) ahead.
 		PREFETCHT0(data.Offset(doff + 1024))
 	}
 	VPXORD(key, y0, y1)
@@ -255,7 +255,7 @@ func avx512accumSplitTwo(data Mem, a [4]VecVirtual, raw VecVirtual, doff int, ke
 	VMOVDQU64(data.Offset(doff+0x00), y0)
 	VMOVDQU64(data.Offset(doff+0x40), z0)
 	if prefetch {
-		// Prefetch once per cacheline (64 bytes), 8 iterations ahead.
+		// Prefetch once per cacheline (64 bytes), 1024 bytes (16 stripes) ahead.
 		PREFETCHT0(data.Offset(doff + 1024))
 		PREFETCHT0(data.Offset(doff + 1024 + 64))
 	}

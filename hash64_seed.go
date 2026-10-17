@@ -7,7 +7,7 @@ func HashSeed(b []byte, seed uint64) uint64 {
 	return hashAnySeed(*(*str)(ptr(&b)), seed)
 }
 
-// HashStringSeed returns the hash of the string slice with given seed.
+// HashStringSeed returns the hash of the string with given seed.
 func HashStringSeed(s string, seed uint64) uint64 {
 	return hashAnySeed(*(*str)(ptr(&s)), seed)
 }
@@ -150,7 +150,6 @@ func hashLargeSecret(p ptr, l uint, secret ptr) u64 {
 		accumScalarSeed(&accs, p, secret, u64(l))
 	}
 
-	// merge accs
 	acc += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))
 	acc += mulFold64(accs[2]^readU64(secret, 27), accs[3]^readU64(secret, 35))
 	acc += mulFold64(accs[4]^readU64(secret, 43), accs[5]^readU64(secret, 51))

@@ -4,12 +4,12 @@ import (
 	"math/bits"
 )
 
-// Hash128Seed returns the 128-bit hash of the byte slice.
+// Hash128Seed returns the 128-bit hash of the byte slice with given seed.
 func Hash128Seed(b []byte, seed uint64) Uint128 {
 	return hashAny128Seed(*(*str)(ptr(&b)), seed)
 }
 
-// HashString128Seed returns the 128-bit hash of the string slice.
+// HashString128Seed returns the 128-bit hash of the string with given seed.
 func HashString128Seed(s string, seed uint64) Uint128 {
 	return hashAny128Seed(*(*str)(ptr(&s)), seed)
 }
@@ -156,7 +156,6 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 		acc.Lo += mulFold64(readU64(p, 12*8)^(midKey(k, 96, key64_096)+seed), readU64(p, 13*8)^(midKey(k, 104, key64_104)-seed))
 		acc.Lo ^= readU64(p, 14*8) + readU64(p, 15*8)
 
-		// avalanche
 		acc.Hi = xxh3Avalanche(acc.Hi)
 		acc.Lo = xxh3Avalanche(acc.Lo)
 
@@ -235,7 +234,6 @@ func hashLarge128Secret(p ptr, l uint, secret ptr) u128 {
 		accumScalar(&accs, p, secret, u64(l))
 	}
 
-	// merge accs
 	const hi_off = 117 - 11
 
 	acc.Lo += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))

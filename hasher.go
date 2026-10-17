@@ -5,7 +5,7 @@ import (
 	"hash"
 )
 
-// Hasher implements the hash.Hash interface
+// Hasher implements the hash.Hash interface.
 type Hasher struct {
 	acc  [8]u64
 	blk  u64

@@ -1,13 +1,11 @@
-.PHONY: all vet
+.PHONY: all vet genasm clean
 all: genasm _compat
 
-genasm: avo/avx.go avo/sse.go
+genasm: avo/gen.go avo/avx.go avo/avx512.go avo/sse.go avo/secret.go
 	cd ./avo; go generate gen.go
 
 clean:
-	rm accum_vector_avx_amd64.s
-	rm accum_vector_sse_amd64.s
-	rm _compat
+	rm -f accum_vector_avx_amd64.s accum_vector_avx512_amd64.s accum_vector_sse_amd64.s secret_amd64.s _compat
 
 upstream/xxhash.o: upstream/xxhash.h
 	( cd upstream && make )
