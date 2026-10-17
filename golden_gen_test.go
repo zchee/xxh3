@@ -12,7 +12,7 @@ func TestGenerateGoldenLengths(t *testing.T) {
 	if os.Getenv("XXH3_GOLDEN_GEN") != "1" {
 		t.Skip("set XXH3_GOLDEN_GEN=1 in the isolated reference tree to generate the fixture")
 	}
-	data := goldenData()
+	data := goldenData(goldenMaxLength)
 	fixture := make([]byte, 0, (goldenMaxLength+1)*goldenRowSize)
 	for n := range goldenMaxLength + 1 {
 		input := data[:n]

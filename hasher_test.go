@@ -13,11 +13,16 @@ const (
 	chunkedWriteChunkSize = 32 << 10
 )
 
-func TestHasherCompat(t *testing.T) {
-	buf := make([]byte, 40970)
-	for i := range buf {
-		buf[i] = byte(uint64(i+1) * 2654435761)
+func linearData(length int) []byte {
+	data := make([]byte, length)
+	for i := range data {
+		data[i] = byte(uint64(i+1) * 2654435761)
 	}
+	return data
+}
+
+func TestHasherCompat(t *testing.T) {
+	buf := linearData(40970)
 
 	for n := range buf {
 		check := func() {
@@ -48,10 +53,7 @@ func TestHasherCompat(t *testing.T) {
 		withGeneric(check)
 	}
 
-	chunked := make([]byte, _block+1+3*chunkedWriteChunkSize)
-	for i := range chunked {
-		chunked[i] = byte(uint64(i+1) * 2654435761)
-	}
+	chunked := linearData(_block + 1 + 3*chunkedWriteChunkSize)
 	check := func() {
 		h := New()
 		h.Write(chunked[:_block+1])
@@ -72,10 +74,7 @@ func TestHasherCompat(t *testing.T) {
 }
 
 func TestHasher128Compat(t *testing.T) {
-	buf := make([]byte, 40970)
-	for i := range buf {
-		buf[i] = byte(uint64(i+1) * 2654435761)
-	}
+	buf := linearData(40970)
 
 	for n := range buf {
 		check := func() {
@@ -103,10 +102,7 @@ func TestHasher128Compat(t *testing.T) {
 }
 
 func TestHasherZeroValue(t *testing.T) {
-	buf := make([]byte, 40970)
-	for i := range buf {
-		buf[i] = byte(uint64(i+1) * 2654435761)
-	}
+	buf := linearData(40970)
 
 	for n := range buf {
 		check := func() {
@@ -128,10 +124,7 @@ func TestHasherZeroValue(t *testing.T) {
 }
 
 func TestHasher128ZeroValue(t *testing.T) {
-	buf := make([]byte, 40970)
-	for i := range buf {
-		buf[i] = byte(uint64(i+1) * 2654435761)
-	}
+	buf := linearData(40970)
 
 	for n := range buf {
 		check := func() {
@@ -150,10 +143,7 @@ func TestHasher128ZeroValue(t *testing.T) {
 }
 
 func TestHasherCompatSeed(t *testing.T) {
-	buf := make([]byte, 40970)
-	for i := range buf {
-		buf[i] = byte(uint64(i+1) * 2654435761)
-	}
+	buf := linearData(40970)
 	rng := rand.New(rand.NewSource(42))
 
 	for n := range buf {
@@ -182,10 +172,7 @@ func TestHasherCompatSeed(t *testing.T) {
 }
 
 func TestHasher128CompatSeed(t *testing.T) {
-	buf := make([]byte, 40970)
-	for i := range buf {
-		buf[i] = byte(uint64(i+1) * 2654435761)
-	}
+	buf := linearData(40970)
 	rng := rand.New(rand.NewSource(42))
 
 	for n := range buf {
@@ -211,13 +198,8 @@ func TestHasher128CompatSeed(t *testing.T) {
 }
 
 func TestAccumBlocks(t *testing.T) {
-	data := make([]byte, 16*_block)
 	// Vary successive blocks so a missing data advance changes the result.
-	state := uint64(1)
-	for i := range data {
-		state = state*6364136223846793005 + 1442695040888963407
-		data[i] = byte(state >> 56)
-	}
+	data := goldenData(16 * _block)
 	tests := map[string]struct {
 		available bool
 		accum     func(*[8]u64, ptr, ptr, u64)
@@ -257,12 +239,7 @@ func TestAccumBlocks(t *testing.T) {
 }
 
 func TestResetPaths(t *testing.T) {
-	data := make([]byte, 8192)
-	state := uint64(1)
-	for i := range data {
-		state = state*6364136223846793005 + 1442695040888963407
-		data[i] = byte(state >> 56)
-	}
+	data := goldenData(8192)
 	tests := map[string]struct {
 		seed    uint64
 		prepare func(*Hasher)
@@ -288,16 +265,7 @@ func TestResetPaths(t *testing.T) {
 			h.ResetSeed(0)
 		}},
 	}
-	levels := map[string]struct {
-		available bool
-		with      func(func())
-	}{
-		"auto":    {true, func(check func()) { check() }},
-		"generic": {true, withGeneric},
-		"avx512":  {hasAVX512, withAVX512},
-		"avx2":    {hasAVX2, withAVX2},
-		"sse2":    {hasSSE2, withSSE2},
-	}
+	levels := dispatchCases()
 	lengths := map[string]struct{ size int }{
 		"empty": {0}, "small": {256}, "block": {1024},
 		"buffer-edge": {1088}, "first-block": {1089}, "bulk": {4096},

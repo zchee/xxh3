@@ -5,12 +5,7 @@ package xxh3
 import "testing"
 
 func TestAccumNEONInitParity(t *testing.T) {
-	data := make([]byte, 2400+15)
-	state := uint64(1)
-	for i := range data {
-		state = state*6364136223846793005 + 1442695040888963407
-		data[i] = byte(state >> 56)
-	}
+	data := goldenData(2400 + 15)
 	initial := [8]u64{
 		prime32_3, prime64_1, prime64_2, prime64_3,
 		prime64_4, prime32_2, prime64_5, prime32_1,

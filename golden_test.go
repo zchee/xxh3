@@ -14,14 +14,30 @@ const (
 
 // goldenData uses an LCG starting at 1, with multiplier 6364136223846793005
 // and increment 1442695040888963407, taking the high byte after each update.
-func goldenData() []byte {
-	data := make([]byte, goldenMaxLength)
+func goldenData(length int) []byte {
+	data := make([]byte, length)
 	state := uint64(1)
 	for i := range data {
 		state = state*6364136223846793005 + 1442695040888963407
 		data[i] = byte(state >> 56)
 	}
 	return data
+}
+
+func dispatchCases() map[string]struct {
+	available bool
+	with      func(func())
+} {
+	return map[string]struct {
+		available bool
+		with      func(func())
+	}{
+		"auto":    {true, func(check func()) { check() }},
+		"generic": {true, withGeneric},
+		"avx512":  {hasAVX512, withAVX512},
+		"avx2":    {hasAVX2, withAVX2},
+		"sse2":    {hasSSE2, withSSE2},
+	}
 }
 
 func TestGoldenLengths(t *testing.T) {
@@ -32,17 +48,8 @@ func TestGoldenLengths(t *testing.T) {
 	if want := (goldenMaxLength + 1) * goldenRowSize; len(fixture) != want {
 		t.Fatalf("golden fixture size: got %d, want %d", len(fixture), want)
 	}
-	data := goldenData()
-	tests := map[string]struct {
-		available bool
-		with      func(func())
-	}{
-		"auto":    {true, func(check func()) { check() }},
-		"generic": {true, withGeneric},
-		"avx512":  {hasAVX512, withAVX512},
-		"avx2":    {hasAVX2, withAVX2},
-		"sse2":    {hasSSE2, withSSE2},
-	}
+	data := goldenData(goldenMaxLength)
+	tests := dispatchCases()
 	for name, tt := range tests {
 		if !tt.available {
 			continue

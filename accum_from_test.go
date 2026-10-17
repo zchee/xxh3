@@ -3,7 +3,7 @@ package xxh3
 import "testing"
 
 func TestAccumFromParity(t *testing.T) {
-	data := goldenData()
+	data := goldenData(goldenMaxLength)
 	tests := map[string]struct {
 		available bool
 		accum     func(*[8]u64, *[8]u64, ptr, ptr, u64)

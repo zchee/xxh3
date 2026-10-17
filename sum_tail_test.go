@@ -3,17 +3,8 @@ package xxh3
 import "testing"
 
 func TestSumTailLengths(t *testing.T) {
-	data := goldenData()
-	tests := map[string]struct {
-		available bool
-		with      func(func())
-	}{
-		"auto":    {true, func(check func()) { check() }},
-		"generic": {true, withGeneric},
-		"avx512":  {hasAVX512, withAVX512},
-		"avx2":    {hasAVX2, withAVX2},
-		"sse2":    {hasSSE2, withSSE2},
-	}
+	data := goldenData(goldenMaxLength)
+	tests := dispatchCases()
 	for name, tt := range tests {
 		if !tt.available {
 			continue
