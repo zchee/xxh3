@@ -122,16 +122,14 @@ func hashAny(s str) (acc u64) {
 			accumAVX2Init(&accs, p, key, u64(l))
 		} else if hasSSE2 {
 			accumSSEInit(&accs, p, key, u64(l))
+		} else if hasNEON {
+			accumNEONInit(&accs, p, key, u64(l))
 		} else {
 			accs = [8]u64{
 				prime32_3, prime64_1, prime64_2, prime64_3,
 				prime64_4, prime32_2, prime64_5, prime32_1,
 			}
-			if hasNEON {
-				accumNEON(&accs, p, key, u64(l))
-			} else {
-				accumScalar(&accs, p, key, u64(l))
-			}
+			accumScalar(&accs, p, key, u64(l))
 		}
 
 		// merge accs

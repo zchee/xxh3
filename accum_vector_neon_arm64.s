@@ -80,129 +80,137 @@
 	MUL_4S(a, a, 31)              \
 	UMLAL_2D(a, 20, 0)
 
+// Share the one-shot body between incoming-state and constant-state entries.
+// Distinct labels keep both expansions local to their assembly function.
+#define ACCUM_BODY(LARGE, TAIL, LOOP, FINAL, DONE) \
+	CMP $1024, R3; \
+	BLE TAIL; \
+	/* Only full blocks need scramble constants. */ \
+	MOVW $0x9e3779b1, R4; \
+	VDUP R4, V0.S4; \
+	VSHL $32, V0.D2, V31.D2; \
+	ADD $8, R2, R8; \
+LARGE: \
+	/* Stripe zero starts raw sums; stripe one starts odd products. */ \
+	FLDPQ (R1), (F21, F22); \
+	FLDPQ 32(R1), (F23, F24); \
+	FLDPQ (R2), (F5, F6); \
+	FLDPQ 32(R2), (F7, F8); \
+	EORUZP(V21, V22, V23, V24); \
+	MLA(1, 2, 3, 4); \
+	LOADS(64, R8, 0); \
+	DSUM; \
+	EORUZP(V16, V17, V18, V19); \
+	MUL4(11, 12, 13, 14); \
+	STRIPE_EVEN(128, R2, 16); \
+	STRIPE_ODD(192, R8, 16); \
+	STRIPE_EVEN(256, R2, 32); \
+	STRIPE_ODD(320, R8, 32); \
+	STRIPE_EVEN(384, R2, 48); \
+	STRIPE_ODD(448, R8, 48); \
+	STRIPE_EVEN(512, R2, 64); \
+	STRIPE_ODD(576, R8, 64); \
+	STRIPE_EVEN(640, R2, 80); \
+	STRIPE_ODD(704, R8, 80); \
+	STRIPE_EVEN(768, R2, 96); \
+	STRIPE_ODD(832, R8, 96); \
+	STRIPE_EVEN(896, R2, 112); \
+	STRIPE_ODD(960, R8, 112); \
+	/* Flush deferred data and odd products before nonlinear scrambling. */ \
+	FOLD(V1, V11, V21); \
+	FOLD(V2, V12, V22); \
+	FOLD(V3, V13, V23); \
+	FOLD(V4, V14, V24); \
+	FLDPQ 128(R2), (F5, F6); \
+	FLDPQ 160(R2), (F7, F8); \
+	SCR(V1, 1, V5); \
+	SCR(V2, 2, V6); \
+	SCR(V3, 3, V7); \
+	SCR(V4, 4, V8); \
+	ADD $1024, R1, R1; \
+	SUB $1024, R3, R3; \
+	CMP $1024, R3; \
+	BGT LARGE; \
+	/* Keep short-input setup and the repeated tail stripe aligned. */ \
+	PCALIGN $16; \
+TAIL: \
+	CBZ R3, DONE; \
+	/* Preserve the overlapping last-stripe address as R1 advances. */ \
+	SUB $1, R3, R6; \
+	LSR $6, R6, R6; \
+	ADD R3, R1, R7; \
+	SUB $64, R7, R7; \
+	MOVD R2, R5; \
+	VEOR V21.B16, V21.B16, V21.B16; \
+	VEOR V22.B16, V22.B16, V22.B16; \
+	VEOR V23.B16, V23.B16, V23.B16; \
+	VEOR V24.B16, V24.B16, V24.B16; \
+	CBZ R6, FINAL; \
+	PCALIGN $16; \
+LOOP: \
+	/* Load the upper pair before post-indexing past this stripe. */ \
+	FLDPQ 32(R1), (F18, F19); \
+	FLDPQ.P 64(R1), (F16, F17); \
+	FLDPQ (R5), (F5, F6); \
+	FLDPQ 32(R5), (F7, F8); \
+	ADD $8, R5, R5; \
+	DSUM; \
+	EORUZP(V16, V17, V18, V19); \
+	MLA(1, 2, 3, 4); \
+	SUBS $1, R6, R6; \
+	BNE LOOP; \
+FINAL: \
+	/* The last stripe uses key offset 121, not the next regular key. */ \
+	ADD $121, R2, R5; \
+	FLDPQ (R7), (F16, F17); \
+	FLDPQ 32(R7), (F18, F19); \
+	FLDPQ (R5), (F5, F6); \
+	FLDPQ 32(R5), (F7, F8); \
+	DSUM; \
+	EORUZP(V16, V17, V18, V19); \
+	MLA(1, 2, 3, 4); \
+	/* Fold swapped raw data once, including the last stripe. */ \
+	VEXT $8, V21.B16, V21.B16, V21.B16; \
+	VADD V21.D2, V1.D2, V1.D2; \
+	VEXT $8, V22.B16, V22.B16, V22.B16; \
+	VADD V22.D2, V2.D2, V2.D2; \
+	VEXT $8, V23.B16, V23.B16, V23.B16; \
+	VADD V23.D2, V3.D2, V3.D2; \
+	VEXT $8, V24.B16, V24.B16, V24.B16; \
+	VADD V24.D2, V4.D2, V4.D2; \
+DONE: \
+	VST1 [V1.D2, V2.D2, V3.D2, V4.D2], (R0); \
+	RET
+
 // func accumNEON(acc *[8]uint64, data *byte, key *byte, len uint64)
 TEXT ·accumNEON(SB), NOSPLIT, $0-32
 	MOVD acc+0(FP), R0
 	MOVD data+8(FP), R1
 	MOVD key+16(FP), R2
 	MOVD len+24(FP), R3
-
-	// Load accumulators: V1=[acc0,acc1], V2=[acc2,acc3], V3=[acc4,acc5], V4=[acc6,acc7]
 	VLD1 (R0), [V1.D2, V2.D2, V3.D2, V4.D2]
+	ACCUM_BODY(accum_large, accum, accum_loop, finalize, done)
 
-	CMP $1024, R3
-	BLE accum
+// Initial accumulator values are read directly instead of copied through the stack.
+DATA initialAccumulators<>+0(SB)/8, $0x00000000c2b2ae3d
+DATA initialAccumulators<>+8(SB)/8, $0x9e3779b185ebca87
+DATA initialAccumulators<>+16(SB)/8, $0xc2b2ae3d27d4eb4f
+DATA initialAccumulators<>+24(SB)/8, $0x165667b19e3779f9
+DATA initialAccumulators<>+32(SB)/8, $0x85ebca77c2b2ae63
+DATA initialAccumulators<>+40(SB)/8, $0x0000000085ebca77
+DATA initialAccumulators<>+48(SB)/8, $0x27d4eb2f165667c5
+DATA initialAccumulators<>+56(SB)/8, $0x000000009e3779b1
+GLOBL initialAccumulators<>(SB), RODATA, $64
 
-	// Only full blocks need scramble constants; the tail does not use them.
-	MOVW $0x9e3779b1, R4
-	VDUP R4, V0.S4
-	VSHL $32, V0.D2, V31.D2
-	ADD $8, R2, R8 // Odd stripes use aligned offsets from key+8.
-
-accum_large:
-	// Initialise raw sums from stripe zero without clearing four vectors.
-	FLDPQ (R1), (F21, F22)
-	FLDPQ 32(R1), (F23, F24)
-	FLDPQ (R2), (F5, F6)
-	FLDPQ 32(R2), (F7, F8)
-	EORUZP(V21, V22, V23, V24)
-	MLA(1, 2, 3, 4)
-
-	// Stripe one initialises the independent odd product chain.
-	LOADS(64, R8, 0)
-	DSUM
-	EORUZP(V16, V17, V18, V19)
-	MUL4(11, 12, 13, 14)
-
-	STRIPE_EVEN(128, R2, 16)
-	STRIPE_ODD(192, R8, 16)
-	STRIPE_EVEN(256, R2, 32)
-	STRIPE_ODD(320, R8, 32)
-	STRIPE_EVEN(384, R2, 48)
-	STRIPE_ODD(448, R8, 48)
-	STRIPE_EVEN(512, R2, 64)
-	STRIPE_ODD(576, R8, 64)
-	STRIPE_EVEN(640, R2, 80)
-	STRIPE_ODD(704, R8, 80)
-	STRIPE_EVEN(768, R2, 96)
-	STRIPE_ODD(832, R8, 96)
-	STRIPE_EVEN(896, R2, 112)
-	STRIPE_ODD(960, R8, 112)
-
-	// Flush deferred data and odd products before the nonlinear scramble.
-	FOLD(V1, V11, V21)
-	FOLD(V2, V12, V22)
-	FOLD(V3, V13, V23)
-	FOLD(V4, V14, V24)
-	FLDPQ 128(R2), (F5, F6)
-	FLDPQ 160(R2), (F7, F8)
-	SCR(V1, 1, V5)
-	SCR(V2, 2, V6)
-	SCR(V3, 3, V7)
-	SCR(V4, 4, V8)
-
-	ADD $1024, R1, R1
-	SUB $1024, R3, R3
-	CMP $1024, R3
-	BGT accum_large
-
-	// Align the short-input entry so its setup is independent of the bulk body size.
-	PCALIGN $16
-accum:
-	// A zero-length defensive call leaves the incoming accumulators unchanged.
-	CBZ R3, done
-
-	// Process (length-1)/64 regular stripes, then the overlapping last stripe.
-	SUB $1, R3, R6
-	LSR $6, R6, R6
-	ADD R3, R1, R7
-	SUB $64, R7, R7 // Preserve the last-stripe address as R1 advances.
-	MOVD R2, R5 // The regular key offset advances by eight bytes per stripe.
-	VEOR V21.B16, V21.B16, V21.B16
-	VEOR V22.B16, V22.B16, V22.B16
-	VEOR V23.B16, V23.B16, V23.B16
-	VEOR V24.B16, V24.B16, V24.B16
-	CBZ R6, finalize
-
-	// Keep the repeated tail stripe aligned despite changes to the bulk kernel.
-	PCALIGN $16
-accum_loop:
-	// Load the upper pair before post-indexing R1 past this complete stripe.
-	FLDPQ 32(R1), (F18, F19)
-	FLDPQ.P 64(R1), (F16, F17)
-	FLDPQ (R5), (F5, F6)
-	FLDPQ 32(R5), (F7, F8)
-	ADD $8, R5, R5
-	DSUM
-	EORUZP(V16, V17, V18, V19)
-	MLA(1, 2, 3, 4)
-	SUBS $1, R6, R6
-	BNE accum_loop
-
-finalize:
-	// The overlapping last stripe always uses key offset 121, not the next key.
-	ADD $121, R2, R5
-	FLDPQ (R7), (F16, F17)
-	FLDPQ 32(R7), (F18, F19)
-	FLDPQ (R5), (F5, F6)
-	FLDPQ 32(R5), (F7, F8)
-	DSUM
-	EORUZP(V16, V17, V18, V19)
-	MLA(1, 2, 3, 4)
-
-	// Fold swapped raw data once, including the overlapping final stripe.
-	VEXT $8, V21.B16, V21.B16, V21.B16
-	VADD V21.D2, V1.D2, V1.D2
-	VEXT $8, V22.B16, V22.B16, V22.B16
-	VADD V22.D2, V2.D2, V2.D2
-	VEXT $8, V23.B16, V23.B16, V23.B16
-	VADD V23.D2, V3.D2, V3.D2
-	VEXT $8, V24.B16, V24.B16, V24.B16
-	VADD V24.D2, V4.D2, V4.D2
-
-done:
-	VST1 [V1.D2, V2.D2, V3.D2, V4.D2], (R0)
-	RET
+// func accumNEONInit(acc *[8]uint64, data *byte, key *byte, len uint64)
+TEXT ·accumNEONInit(SB), NOSPLIT, $0-32
+	MOVD acc+0(FP), R0
+	MOVD data+8(FP), R1
+	MOVD key+16(FP), R2
+	MOVD len+24(FP), R3
+	MOVD $initialAccumulators<>(SB), R9
+	VLD1 (R9), [V1.D2, V2.D2, V3.D2, V4.D2]
+	ACCUM_BODY(init_accum_large, init_accum, init_accum_loop, init_finalize, init_done)
 
 // func accumBlockNEON(acc *[8]uint64, data *byte, key *byte)
 // Processes exactly 1024 bytes (16 stripes) and scrambles

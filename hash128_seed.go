@@ -225,16 +225,14 @@ func hashLarge128Secret(p ptr, l uint, secret ptr) u128 {
 		accumAVX2Init(&accs, p, secret, u64(l))
 	} else if hasSSE2 {
 		accumSSEInit(&accs, p, secret, u64(l))
+	} else if hasNEON {
+		accumNEONInit(&accs, p, secret, u64(l))
 	} else {
 		accs = [8]u64{
 			prime32_3, prime64_1, prime64_2, prime64_3,
 			prime64_4, prime32_2, prime64_5, prime32_1,
 		}
-		if hasNEON {
-			accumNEON(&accs, p, secret, u64(l))
-		} else {
-			accumScalar(&accs, p, secret, u64(l))
-		}
+		accumScalar(&accs, p, secret, u64(l))
 	}
 
 	// merge accs

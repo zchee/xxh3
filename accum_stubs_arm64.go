@@ -21,6 +21,11 @@ func initSecretAVX2(secret unsafe.Pointer, seed u64) { panic("unreachable") }
 //go:noescape
 func accumNEON(acc *[8]u64, data, key unsafe.Pointer, len u64)
 
+// accumNEONInit ignores acc's contents and starts from the initial accumulators.
+//
+//go:noescape
+func accumNEONInit(acc *[8]u64, data, key unsafe.Pointer, len u64)
+
 //go:noescape
 func accumBlockNEON(acc *[8]u64, data, key unsafe.Pointer)
 func accumAVX2(acc *[8]u64, data, key unsafe.Pointer, len u64)   { panic("unreachable") }

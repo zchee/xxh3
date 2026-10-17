@@ -81,8 +81,9 @@ func accumBlockAVX512Init(acc *[8]u64, data, key unsafe.Pointer)
 //go:noescape
 func accumBlockSSEInit(acc *[8]u64, data, key unsafe.Pointer)
 
-func accumNEON(acc *[8]u64, data, key unsafe.Pointer, len u64) { panic("unreachable") }
-func accumBlockNEON(acc *[8]u64, data, key unsafe.Pointer)     { panic("unreachable") }
+func accumNEON(acc *[8]u64, data, key unsafe.Pointer, len u64)     { panic("unreachable") }
+func accumNEONInit(acc *[8]u64, data, key unsafe.Pointer, len u64) { panic("unreachable") }
+func accumBlockNEON(acc *[8]u64, data, key unsafe.Pointer)         { panic("unreachable") }
 
 // accumBlocksAVX2 accumulates and scrambles n complete blocks.
 //
