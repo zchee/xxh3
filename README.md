@@ -13,6 +13,12 @@ Upstream has fixed the output as of v0.8.0, and this package matches that.
 
 The AMD Ryzen 9 9950X and Intel i7-8850H measurements below predate this branch's changes; that hardware was not re-measured here.
 
+In the benchmark suite, Hasher levels `avx512`, `avx2`, and `sse2` and
+Fixed suffixes `-AVX512`, `-AVX2`, and `-SSE2` force the named ISA.
+Hasher `go` and unsuffixed Fixed rows force the generic path (scalar on
+amd64; NEON remains enabled on arm64). Hasher `auto` and Fixed `-AUTO`
+rows use normal, unforced dispatch.
+
 ## AMD Ryzen 9 9950X
 
 ### Small Sizes

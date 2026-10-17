@@ -39,6 +39,7 @@ func BenchmarkFixed64(b *testing.B) {
 			if hasSSE2 {
 				withSSE2(func() { b.Run(fmt.Sprintf("%d-SSE2", i), bench) })
 			}
+			b.Run(fmt.Sprintf("%d-AUTO", i), bench)
 		}
 
 		withGeneric(func() { b.Run(fmt.Sprintf("%d", i), bench) })

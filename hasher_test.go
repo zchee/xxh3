@@ -315,6 +315,10 @@ func BenchmarkHasher64(b *testing.B) {
 					withSSE2(check)
 				})
 			}
+			b.Run("auto", func(b *testing.B) {
+				bn = b
+				check()
+			})
 		})
 	}
 }
@@ -355,6 +359,7 @@ func BenchmarkHasher64Chunked(b *testing.B) {
 					withSSE2(func() { run(b) })
 				})
 			}
+			b.Run("auto", run)
 		})
 	}
 }
@@ -446,6 +451,10 @@ func BenchmarkHasher128(b *testing.B) {
 					withSSE2(check)
 				})
 			}
+			b.Run("auto", func(b *testing.B) {
+				bn = b
+				check()
+			})
 		})
 	}
 }
