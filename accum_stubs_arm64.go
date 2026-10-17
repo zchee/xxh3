@@ -11,6 +11,13 @@ const (
 	hasNEON   = true
 )
 
+// initSecretNEON fills secret with the default key adjusted by seed.
+//
+//go:noescape
+func initSecretNEON(secret, key unsafe.Pointer, seed u64)
+
+func initSecretAVX2(secret unsafe.Pointer, seed u64) { panic("unreachable") }
+
 //go:noescape
 func accumNEON(acc *[8]u64, data, key unsafe.Pointer, len u64)
 

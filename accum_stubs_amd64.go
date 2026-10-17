@@ -3,7 +3,7 @@ package xxh3
 import (
 	"unsafe"
 
-	"github.com/klauspost/cpuid/v2"
+	cpuid "github.com/klauspost/cpuid/v2"
 )
 
 var (
@@ -13,6 +13,13 @@ var (
 )
 
 const hasNEON = false
+
+// initSecretAVX2 fills secret with the default key adjusted by seed.
+//
+//go:noescape
+func initSecretAVX2(secret unsafe.Pointer, seed u64)
+
+func initSecretNEON(secret, key unsafe.Pointer, seed u64) { panic("unreachable") }
 
 //go:noescape
 func accumAVX2(acc *[8]u64, data, key unsafe.Pointer, len u64)

@@ -322,3 +322,34 @@ blocks_loop:
 	VST1 [V1.D2, V2.D2, V3.D2, V4.D2], (R0)
 blocks_done:
 	RET
+
+// Fill the secret in ascending order with alternating additions and subtractions.
+TEXT ·initSecretNEON(SB), NOSPLIT, $0-24
+	MOVD secret+0(FP), R0
+	MOVD key+8(FP), R1
+	MOVD seed+16(FP), R2
+	NEG R2, R3
+	VDUP R2, V0.D2
+	VMOV R3, V0.D[1]
+
+	VLD1.P 64(R1), [V1.D2, V2.D2, V3.D2, V4.D2]
+	VADD V0.D2, V1.D2, V1.D2
+	VADD V0.D2, V2.D2, V2.D2
+	VADD V0.D2, V3.D2, V3.D2
+	VADD V0.D2, V4.D2, V4.D2
+	VST1.P [V1.D2, V2.D2, V3.D2, V4.D2], 64(R0)
+
+	VLD1.P 64(R1), [V1.D2, V2.D2, V3.D2, V4.D2]
+	VADD V0.D2, V1.D2, V1.D2
+	VADD V0.D2, V2.D2, V2.D2
+	VADD V0.D2, V3.D2, V3.D2
+	VADD V0.D2, V4.D2, V4.D2
+	VST1.P [V1.D2, V2.D2, V3.D2, V4.D2], 64(R0)
+
+	VLD1 (R1), [V1.D2, V2.D2, V3.D2, V4.D2]
+	VADD V0.D2, V1.D2, V1.D2
+	VADD V0.D2, V2.D2, V2.D2
+	VADD V0.D2, V3.D2, V3.D2
+	VADD V0.D2, V4.D2, V4.D2
+	VST1 [V1.D2, V2.D2, V3.D2, V4.D2], (R0)
+	RET

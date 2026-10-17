@@ -219,12 +219,18 @@ func hashAny128Seed(s str, seed uint64) (acc u128) {
 		return acc
 
 	default:
-		secret := key
-		if seed != 0 {
-			secret = ptr(&[secretSize]byte{})
-			initSecret(secret, seed)
+		if seed == 0 {
+			return hashLarge128Secret(p, l, key)
 		}
-		return hashLarge128Secret(p, l, secret)
+		var secret [secretSize]byte
+		if hasAVX2 {
+			initSecretAVX2(ptr(&secret), seed)
+		} else if hasNEON {
+			initSecretNEON(ptr(&secret), key, seed)
+		} else {
+			initSecret(ptr(&secret), seed)
+		}
+		return hashLarge128Secret(p, l, ptr(&secret))
 	}
 }
 

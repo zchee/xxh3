@@ -101,12 +101,18 @@ func hashAnySeed(s str, seed uint64) (acc u64) {
 		return xxh3Avalanche(acc)
 
 	default:
-		secret := key
-		if seed != 0 {
-			secret = ptr(&[secretSize]byte{})
-			initSecret(secret, seed)
+		if seed == 0 {
+			return hashLargeSecret(p, l, key)
 		}
-		return hashLargeSecret(p, l, secret)
+		var secret [secretSize]byte
+		if hasAVX2 {
+			initSecretAVX2(ptr(&secret), seed)
+		} else if hasNEON {
+			initSecretNEON(ptr(&secret), key, seed)
+		} else {
+			initSecret(ptr(&secret), seed)
+		}
+		return hashLargeSecret(p, l, ptr(&secret))
 	}
 }
 

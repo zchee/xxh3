@@ -14,6 +14,9 @@ const (
 	hasNEON   = false
 )
 
+func initSecretAVX2(secret unsafe.Pointer, seed u64)      { panic("unreachable") }
+func initSecretNEON(secret, key unsafe.Pointer, seed u64) { panic("unreachable") }
+
 func accumAVX2(acc *[8]u64, data, key unsafe.Pointer, len u64)   { panic("unreachable") }
 func accumSSE(acc *[8]u64, data, key unsafe.Pointer, len u64)    { panic("unreachable") }
 func accumBlockAVX2(acc *[8]u64, data, key unsafe.Pointer)       { panic("unreachable") }
