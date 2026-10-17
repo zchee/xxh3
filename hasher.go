@@ -42,10 +42,6 @@ func NewSeed(seed uint64) *Hasher {
 
 // Reset resets the Hash to its initial state.
 func (h *Hasher) Reset() {
-	h.acc = [8]u64{
-		prime32_3, prime64_1, prime64_2, prime64_3,
-		prime64_4, prime32_2, prime64_5, prime32_1,
-	}
 	h.blk = 0
 	h.len = 0
 }
@@ -139,10 +135,18 @@ func (h *Hasher) updateString(buf string) {
 			} else {
 				accumBlockSSE(&h.acc, ptr(&h.buf), h.key)
 			}
-		} else if hasNEON {
-			accumBlockNEON(&h.acc, ptr(&h.buf), h.key)
 		} else {
-			accumBlockScalar(&h.acc, ptr(&h.buf), h.key)
+			if h.blk == 0 {
+				h.acc = [8]u64{
+					prime32_3, prime64_1, prime64_2, prime64_3,
+					prime64_4, prime32_2, prime64_5, prime32_1,
+				}
+			}
+			if hasNEON {
+				accumBlockNEON(&h.acc, ptr(&h.buf), h.key)
+			} else {
+				accumBlockScalar(&h.acc, ptr(&h.buf), h.key)
+			}
 		}
 		h.blk++
 		h.len = _stripe
@@ -182,10 +186,16 @@ func (h *Hasher) updateString(buf string) {
 			accumBlockAVX2Init(&h.acc, *(*ptr)(ptr(&buf)), h.key)
 		} else if hasSSE2 {
 			accumBlockSSEInit(&h.acc, *(*ptr)(ptr(&buf)), h.key)
-		} else if hasNEON {
-			accumBlockNEON(&h.acc, *(*ptr)(ptr(&buf)), h.key)
 		} else {
-			accumBlockScalar(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+			h.acc = [8]u64{
+				prime32_3, prime64_1, prime64_2, prime64_3,
+				prime64_4, prime32_2, prime64_5, prime32_1,
+			}
+			if hasNEON {
+				accumBlockNEON(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+			} else {
+				accumBlockScalar(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+			}
 		}
 		buf = buf[_block:]
 		h.blk++

@@ -257,6 +257,108 @@ func TestAccumBlocks(t *testing.T) {
 	}
 }
 
+func TestResetPaths(t *testing.T) {
+	data := make([]byte, 8192)
+	state := uint64(1)
+	for i := range data {
+		state = state*6364136223846793005 + 1442695040888963407
+		data[i] = byte(state >> 56)
+	}
+	tests := map[string]struct {
+		seed    uint64
+		prepare func(*Hasher)
+	}{
+		"zero-value": {},
+		"reset": {prepare: func(h *Hasher) {
+			h.Write(data)
+			h.Reset()
+		}},
+		"reset-seeded": {seed: 7, prepare: func(h *Hasher) {
+			h.ResetSeed(7)
+			h.Write(data)
+			h.Reset()
+		}},
+		"change-seed": {seed: 11, prepare: func(h *Hasher) {
+			h.ResetSeed(7)
+			h.Write(data)
+			h.ResetSeed(11)
+		}},
+		"clear-seed": {prepare: func(h *Hasher) {
+			h.ResetSeed(7)
+			h.Write(data)
+			h.ResetSeed(0)
+		}},
+	}
+	levels := map[string]struct {
+		available bool
+		with      func(func())
+	}{
+		"auto":    {true, func(check func()) { check() }},
+		"generic": {true, withGeneric},
+		"avx512":  {hasAVX512, withAVX512},
+		"avx2":    {hasAVX2, withAVX2},
+		"sse2":    {hasSSE2, withSSE2},
+	}
+	lengths := map[string]struct{ size int }{
+		"empty": {0}, "small": {256}, "block": {1024},
+		"buffer-edge": {1088}, "first-block": {1089}, "bulk": {4096},
+	}
+	prefixes := map[string]struct{ size int }{
+		"direct": {0}, "buffered": {64}, "accumulated": {2048},
+	}
+	for level, config := range levels {
+		if !config.available {
+			continue
+		}
+		t.Run(level, func(t *testing.T) {
+			config.with(func() {
+				for name, tt := range tests {
+					t.Run(name, func(t *testing.T) {
+						for sizeName, length := range lengths {
+							t.Run(sizeName, func(t *testing.T) {
+								for prefixName, initial := range prefixes {
+									t.Run(prefixName, func(t *testing.T) {
+										var h Hasher
+										if tt.prepare != nil {
+											tt.prepare(&h)
+										}
+										prefix := min(initial.size, length.size)
+										h.Write(data[:prefix])
+										copied := h
+										for copyName, copyCase := range map[string]struct{ target *Hasher }{"original": {&h}, "copy": {&copied}} {
+											t.Run(copyName, func(t *testing.T) {
+												target := copyCase.target
+												target.Write(data[prefix:length.size])
+												before := *target
+												if got, want := target.Sum64(), HashSeed(data[:length.size], tt.seed); got != want {
+													t.Fatalf("Sum64: got %016x, want %016x", got, want)
+												}
+												if got, want := target.Sum128(), Hash128Seed(data[:length.size], tt.seed); got != want {
+													t.Fatalf("Sum128: got %016x, want %016x", got, want)
+												}
+												if *target != before {
+													t.Fatal("Sum changed the hasher state")
+												}
+												target.Write(data[length.size : length.size+17])
+												if got, want := target.Sum64(), HashSeed(data[:length.size+17], tt.seed); got != want {
+													t.Fatalf("continued Sum64: got %016x, want %016x", got, want)
+												}
+												if got, want := target.Sum128(), Hash128Seed(data[:length.size+17], tt.seed); got != want {
+													t.Fatalf("continued Sum128: got %016x, want %016x", got, want)
+												}
+											})
+										}
+									})
+								}
+							})
+						}
+					})
+				}
+			})
+		})
+	}
+}
+
 func BenchmarkHasher64(b *testing.B) {
 	rng := rand.New(rand.NewSource(42))
 	for n := uint(4); n <= 28; n += 2 {
